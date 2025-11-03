@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KMC Final MBBS Prep Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 50;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            transition: opacity 0.3s ease;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            position: relative;
+            margin: auto;
+            width: 90%;
+            max-width: 48rem; /* 768px */
+            transition: transform 0.3s ease;
+            transform: scale(0.95);
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal.show .modal-content {
+            transform: scale(1);
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        #global-loader {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            margin-top: -20px;
+            margin-left: -20px;
+            z-index: 100;
+        }
+        #feature-loader {
+            display: none;
+            margin: 4rem auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Custom Checkbox */
+        .custom-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            height: 1.25rem;
+            width: 1.25rem;
+            min-width: 1.25rem;
+            border: 2px solid #cbd5e1;
+            border-radius: 0.375rem;
+            margin-right: 0.5rem;
+            cursor: pointer;
+            display: inline-block;
+            position: relative;
+            top: 4px;
+        }
+        .custom-checkbox:checked {
+            background-color: #4f46e5;
+            border-color: #4f46e5;
+        }
+        .custom-checkbox:checked::after {
+            content: '\u2713'; /* Checkmark */
+            font-size: 0.875rem;
+            color: white;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+        }
+        
+        /* Flashcard Styles */
+        .flashcard-container {
+            perspective: 1000px;
+            min-height: 250px;
+        }
+        .flashcard {
+            width: 100%;
+            height: 250px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+        }
+        .flashcard.is-flipped {
+            transform: rotateY(180deg);
+        }
+        .flashcard-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .flashcard-front {
+            background-color: white;
+            color: #1f2937;
+        }
+        .flashcard-back {
+            background-color: #f9fafb;
+            color: #374151;
+            transform: rotateY(180deg);
+        }
+        
+        /* Quiz Styles */
+        .quiz-option {
+            display: block;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .quiz-option:hover {
+            border-color: #a5b4fc;
+        }
+        .quiz-option.selected {
+            background-color: #e0e7ff;
+            border-color: #6366f1;
+        }
+        .quiz-option.correct {
+            background-color: #d1fae5;
+            border-color: #10b981;
+        }
+        .quiz-option.incorrect {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-900">
+
+    <!-- Loading Spinner -->
+    <div id="global-loader" class="loader"></div>
+
+    <!-- Main Content -->
+    <div id="app-content" class="max-w-4xl mx-auto p-4 md:p-8 opacity-0 transition-opacity duration-500">
+        
+        <header class="mb-8">
+            <div class="flex justify-between items-center">
+                <h1 class="text-3xl font-bold text-gray-800">KMC Final MBBS Prep Tracker</h1>
+                <div id="study-streak" class="flex items-center gap-2 text-lg font-semibold text-orange-500 bg-orange-100 px-4 py-2 rounded-full hidden">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.933-.207.375-.317.802-.317 1.255 0 1.223.71 2.31 1.708 2.868.998.558 2.227.863 3.499 1.003.21.015.42.022.63.022.384 0 .758-.044 1.117-.128.358-.084.704-.203.999-.358.295-.155.572-.34.822-.557a1 1 0 00-.27-1.728c-.202-.108-.41-.194-.623-.257-.213-.063-.43-.102-.65-.122-.178-.016-.358-.024-.54-.024-.26 0-.51.02-.75.052-.24.032-.47.08-.69.143-.22.063-.43.14-.63.23-.2.09-.39.2-.57.31-.18.11-.35.24-.51.38-.16.14-.31.3-.45.47-.14.17-.27.34-.39.53-.12.19-.23.39-.33.6a1.003 1.003 0 00.22 1.21c.18.17.4.29.65.39.25.1.52.17.8.21.28.04.57.06.87.06.31 0 .61-.02.91-.06.3-.04.59-.1.87-.19.28-.09.55-.2.81-.33.26-.13.5-.29.73-.47.23-.18.44-.38.64-.6.2-.22.37-.45.52-.7.15-.25.28-.51.4-.78.12-.27.22-.55.3-.84.08-.29.14-.59.17-.9a1 1 0 00-1.99.2c-.02.13-.05.26-.09.39-.04.13-.09.25-.15.37-.06.12-.13.23-.2.34-.07.11-.15.22-.24.31-.09.09-.19.17-.3.25-.11.08-.22.15-.35.21-.13.06-.26.11-.4.15-.14.04-.29.07-.44.09-.15.02-.3.03-.46.03-.29 0-.58-.02-.86-.06-.28-.04-.55-.1-.81-.18-.26-.08-.51-.18-.75-.3-.24-.12-.47-.25-.68-.4-.21-.15-.4-.32-.57-.5-.17-.18-.32-.37-.45-.58-.13-.21-.24-.43-.33-.66-.09-.23-.16-.47-.21-.72-.05-.25-.08-.5-.08-.76 0-.41.09-.8.26-1.15.17-.35.4-.67.7-95.23-.28.3-.3.57-.46.85-.16.28-.3.57-.42.87-.12.3-.22.61-.3.93-.08.32-.14.65-.17.99a1 1 0 001.99.18c.02-.17.05-.33.09-.5.04-.17.09-.33.15-.49.06-.16.13-.31.2-.46.07-.15.15-.29.24-.42.09-.13.19-.25.3-.36.11-.11.23-.21.36-.3.13-.09.27-.17.41-.24.14-.07.29-.13.44-.18.15-.05.3-.09.46-.11.16-.02.32-.03.49-.03.41 0 .8.09 1.15.26.35.17.67.4.95.7.28.3.53.63.73.99.2.36.36.75.48 1.15.12.4.19.81.19 1.23 0 .28-.03.55-.08.81-.05.26-.12.51-.2.75-.08.24-.18.47-.29.69-.11.22-.24.43-.38.62-.14.19-.3.37-.47.53-.17.16-.35.31-.55.44-.2.13-.41.24-.63.34-.22.1-.45.18-.69.24-.24.06-.49.1-.74.12-.25.02-.5.03-.75.03-.43 0-.85-.05-1.25-.14-.4-.09-.78-.22-1.14-.39-.36-.17-.69-.38-.98-.63-.29-.25-.55-.53-.77-.85-.22-.32-.4-.67-.54-1.04-.14-.37-.25-.76-.25-1.17 0-.41.09-.8.26-1.15.17-.35.4-.67.7-.95.23-.28.3-.3.57-.46.85.16-.28.3-.57.42-.87.12-.3.22.61.3-.93.08.32.14.65-.17-.99z" clip-rule="evenodd" /></svg>
+                    <span id="streak-count">0 Day Streak</span>
+                </div>
+            </div>
+            <p class="text-sm text-gray-500 mt-2">Your daily guide to conquering the final year syllabus. Your User ID: <code id="user-id" class="font-mono bg-gray-200 px-1 rounded">...</code></p>
+        </header>
+
+        <!-- Progress Metric -->
+        <div class="bg-white p-6 rounded-2xl shadow-lg mb-8">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">Your Progress</h2>
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="relative w-36 h-36">
+                    <svg class="w-full h-full" viewBox="0 0 100 100">
+                        <!-- Background circle -->
+                        <circle class="text-gray-200" stroke-width="10" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" />
+                        <!-- Progress circle -->
+                        <circle
+                            id="progress-ring"
+                            class="progress-ring__circle text-indigo-600"
+                            stroke-width="10"
+                            stroke-dasharray="282.74"
+                            stroke-dashoffset="282.74"
+                            stroke-linecap="round"
+                            stroke="currentColor"
+                            fill="transparent"
+                            r="45"
+                            cx="50"
+                            cy="50"
+                        />
+                    </svg>
+                    <div id="progress-percent" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl font-bold text-indigo-700">
+                        0%
+                    </div>
+                </div>
+                <div class="text-center md:text-left">
+                    <p id="progress-text" class="text-xl font-medium text-gray-800">0 / 0 Topics Completed</p>
+                    <p class="text-gray-500 mt-1">Keep going! Consistency is key.</p>
+                    <button id="toggle-syllabus-btn" class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium shadow-md hover:bg-indigo-700 transition-all">
+                        View Full Syllabus Checklist
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Focus Topic -->
+        <div class="bg-white p-6 rounded-2xl shadow-lg">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">Today's Focus Topic</h2>
+            <div id="daily-topic-container" class="min-h-[200px]">
+                <!-- Daily topic will be injected here -->
+            </div>
+            <div id="all-complete-message" class="hidden text-center py-10">
+                <h3 class="text-2xl font-bold text-green-600">Congratulations!</h3>
+                <p class="text-lg text-gray-700 mt-2">You have completed all topics in the syllabus!</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Full Syllabus Modal -->
+    <div id="syllabus-modal" class="modal">
+        <div class="modal-content bg-white p-6 rounded-2xl shadow-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-800">Full Syllabus Checklist</h2>
+                <button id="close-syllabus-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl font-bold">&times;</button>
+            </div>
+            <div id="full-syllabus-container" class="max-h-[70vh] overflow-y-auto pr-2 space-y-6">
+                <!-- Full syllabus checklist will be injected here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Feature Modal (for Flashcards and Quizzes) -->
+    <div id="feature-modal" class="modal">
+        <div class="modal-content bg-gray-100 p-6 rounded-2xl shadow-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="feature-modal-title" class="text-2xl font-bold text-gray-800">Feature</h2>
+                <button id="close-feature-modal-btn" class="text-gray-500 hover:text-gray-800 text-3xl font-bold">&times;</button>
+            </div>
+            <div id="feature-modal-content" class="max-h-[70vh] overflow-y-auto p-4 bg-white rounded-lg min-h-[350px]">
+                <!-- Loader -->
+                <div id="feature-loader" class="loader"></div>
+                <!-- Content (flashcards or quiz) will be injected here -->
+            </div>
+            <div id="feature-modal-footer" class="mt-4">
+                <!-- Footer buttons will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            onSnapshot, 
+            setDoc, 
+            getDoc,
+            updateDoc,
+            setLogLevel
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- SYLLABUS DATA ---
+        // This is the entire syllabus from your document, converted into a JavaScript object.
+        const syllabus = [
+            {
+                id: 'medicine',
+                subject: 'Section 2: General Medicine and Allied Specialties',
+                topics: [
+                    {
+                        id: 'med_cardio',
+                        topic: '2.1 Cardiology',
+                        subtopics: [
+                            { id: 'med_cardio_ihd', name: 'Ischemic Heart Disease (Angina, *Myocardial Infarction)', details: [
+                                'Core Knowledge (Theory): Etiology and risk factors for atherosclerosis. Pathophysiology of stable angina, unstable angina, NSTEMI, and *STEMI*. Clinical features. Diagnostic criteria (ECG changes, cardiac biomarkers). Comprehensive management protocols (MONA-B, reperfusion, secondary prevention). Complications of MI.',
+                                'Clinical Skills (Practical/OSCE): Taking a detailed history of chest pain. Performing a cardiovascular system examination. *Interpreting a 12-lead ECG for ischemia*. Counseling a patient on lifestyle modifications post-MI.',
+                                'Integrated Concepts (Viva Voce): Pharmacology of anti-platelet agents, anticoagulants, thrombolytics, and beta-blockers. Pathological basis of atherosclerosis.'
+                            ]},
+                            { id: 'med_cardio_hf', name: '*Heart Failure (Acute and Chronic)', details: [
+                                'Core Knowledge (Theory): Definition and classification (HFrEF, HFpEF, NYHA). Pathophysiology (neurohormonal activation). Etiologies. Clinical features. Diagnostic workup (CXR, ECG, echo). Management of chronic HF (pharmacological, non-pharmacological). *Management of acute decompensated HF and cardiogenic shock*.',
+                                'Clinical Skills (Practical/OSCE): Eliciting symptoms (dyspnea, orthopnea). Examining for signs (raised JVP, edema, crepitations, S3). Interpreting a chest X-ray for pulmonary edema.',
+                                'Integrated Concepts (Viva Voce): Physiological principles of preload, afterload, contractility. Pharmacological mechanisms of diuretics and inotropes.'
+                            ]},
+                            { id: 'med_cardio_htn', name: 'Hypertension (Essential, Secondary, Hypertensive Emergencies)', details: [
+                                'Core Knowledge (Theory): Definition, classification, measurement. Pathophysiology of essential hypertension. Causes of secondary hypertension. Clinical features and evaluation. Management (lifestyle, pharmacological agents). Definition and *management of hypertensive urgency and emergency*.',
+                                'Clinical Skills (Practical/OSCE): Accurate measurement of blood pressure. Examining for end-organ damage (fundoscopy, renal bruits).',
+                                'Integrated Concepts (Viva Voce): Physiology of blood pressure regulation (RAAS). Pharmacology of antihypertensive drugs.'
+                            ]},
+                            { id: 'med_cardio_arr', name: '*Arrhythmias (AF, SVT, Heart Blocks)', details: [
+                                'Core Knowledge (Theory): Mechanisms. ECG diagnosis and features of *atrial fibrillation*, SVT, VT, and AV blocks. Acute and long-term management (rate vs. rhythm control, anticoagulation for AF - CHA2DS2-VASc).',
+                                'Clinical Skills (Practical/OSCE): *Recognizing common arrhythmia patterns on an ECG strip*. Performing carotid sinus massage (simulated).',
+                                'Integrated Concepts (Viva Voce): Cardiac electrophysiology. Vaughan Williams classification.'
+                            ]},
+                            { id: 'med_cardio_vhd', name: 'Valvular Heart Disease (MS, MR, AS, AR)', details: [
+                                'Core Knowledge (Theory): Etiology, pathophysiology, clinical features, characteristic murmurs, and hemodynamic consequences. Diagnostic evaluation. Management principles.',
+                                'Clinical Skills (Practical/OSCE): Detailed precordial examination. *Identifying and describing cardiac murmurs*.',
+                                'Integrated Concepts (Viva Voce): Pathophysiology of rheumatic heart disease. Pressure-volume loops.'
+                            ]},
+                            { id: 'med_cardio_ie', name: '*Infective Endocarditis', details: [
+                                'Core Knowledge (Theory): Pathogenesis. Causative organisms. Risk factors. Clinical manifestations (fever, new murmur, peripheral stigmata). *Duke\'s criteria*. Management (antibiotics, surgery). Prophylaxis guidelines.',
+                                'Clinical Skills (Practical/OSCE): Eliciting risk factors. Examining for peripheral signs.',
+                                'Integrated Concepts (Viva Voce): Microbiology of causative agents. Pathological features of vegetations.'
+                            ]},
+                            { id: 'med_cardio_peri', name: 'Pericardial Diseases (Pericarditis, Tamponade, Constrictive)', details: [
+                                'Core Knowledge (Theory): Etiologies of acute pericarditis. Clinical features (pain, rub). ECG changes. *Cardiac tamponade: Beck\'s triad, pulsus paradoxus, management (pericardiocentesis)*. Constrictive pericarditis features.',
+                                'Clinical Skills (Practical/OSCE): Auscultating for a pericardial rub. Demonstrating pulsus paradoxus.',
+                                'Integrated Concepts (Viva Voce): Differentiating ECG changes of pericarditis from MI.'
+                            ]},
+                            { id: 'med_cardio_cm', name: 'Cardiomyopathies', details: [
+                                'Core Knowledge (Theory): Classification and features of dilated, hypertrophic, and restrictive cardiomyopathies.',
+                                'Clinical Skills (Practical/OSCE): Differentiating clinical examination findings.',
+                                'Integrated Concepts (Viva Voce): Genetic basis of hypertrophic cardiomyopathy.'
+                            ]},
+                            { id: 'med_cardio_chd', name: 'Congenital Heart Disease in Adults (ASD, VSD, PDA)', details: [
+                                'Core Knowledge (Theory): Basic pathophysiology, clinical features, murmurs. Eisenmenger syndrome.',
+                                'Clinical Skills (Practical/OSCE): Identifying fixed splitting S2 (ASD) and continuous murmur (PDA).',
+                                'Integrated Concepts (Viva Voce): Embryological basis.'
+                            ]},
+                            { id: 'med_cardio_pte', name: '*Pulmonary Thromboembolism', details: [
+                                'Core Knowledge (Theory): Risk factors (Virchow\'s triad). Pathophysiology. Clinical presentation. Diagnostic approach (D-dimer, CTPA, V/Q). Management (anticoagulation, thrombolysis).',
+                                'Clinical Skills (Practical/OSCE): Applying clinical probability scores (Wells).',
+                                'Integrated Concepts (Viva Voce): Differentiating chest pain of PE from MI.'
+                            ]}
+                        ]
+                    },
+                    {
+                        id: 'med_pulmo',
+                        topic: '2.2 Pulmonology & Respiratory Medicine',
+                        subtopics: [
+                            { id: 'med_pulmo_pna', name: '*Pneumonia (Community-Acquired, Hospital-Acquired)', details: [
+                                'Core Knowledge (Theory): Definition, classification, etiological agents. Clinical features. Diagnosis (CXR findings). *Severity assessment (CURB-65)*. Management. Complications (effusion, empyema, abscess).',
+                                'Clinical Skills (Practical/OSCE): Respiratory exam for consolidation. Interpreting a CXR for pneumonia.',
+                                'Integrated Concepts (Viva Voce): Microbiology (typical vs. atypical). Pharmacology of antibiotics.'
+                            ]},
+                            { id: 'med_pulmo_tb', name: '*Tuberculosis (Pulmonary and Extra-pulmonary, DOTS, MDR-TB)', details: [
+                                'Core Knowledge (Theory): Epidemiology, microbiology. Pathogenesis (primary, post-primary). Diagnosis (sputum, CBNAAT). CXR interpretation. *Management under NTEP, DOTS, ATT regimens, side effects*. *MDR-TB and XDR-TB*. Extra-pulmonary TB forms.',
+                                'Clinical Skills (Practical/OSCE): Taking history. Respiratory exam. Counseling on adherence.',
+                                'Integrated Concepts (Viva Voce): Link to Community Medicine (NTEP). Pharmacology of ATT.'
+                            ]},
+                            { id: 'med_pulmo_copd', name: '*Chronic Obstructive Pulmonary Disease (COPD)', details: [
+                                'Core Knowledge (Theory): Definition, risk factors. Pathophysiology (bronchitis, emphysema). Clinical features ("pink puffers", "blue bloaters"). Diagnosis and staging (spirometry). Management of stable COPD. *Management of acute exacerbations*.',
+                                'Clinical Skills (Practical/OSCE): Examining for signs (barrel chest). Demonstrating inhaler use.',
+                                'Integrated Concepts (Viva Voce): Interpreting spirometry. Differentiating COPD from asthma.'
+                            ]},
+                            { id: 'med_pulmo_asthma', name: '*Bronchial Asthma', details: [
+                                'Core Knowledge (Theory): Pathophysiology. Triggers. Clinical features. Diagnosis (spirometry with reversibility). Stepwise management (GINA). *Management of acute severe asthma/status asthmaticus*.',
+                                'Clinical Skills (Practical/OSCE): Eliciting triggers. Auscultating for wheeze. Using a peak flow meter.',
+                                'Integrated Concepts (Viva Voce): Pharmacology of bronchodilators and ICS.'
+                            ]},
+                            { id: 'med_pulmo_pleural', name: 'Pleural Effusion', details: [
+                                'Core Knowledge (Theory): Pathophysiology. Transudates vs. exudates (*Light\'s criteria*). Common causes. Clinical features. Diagnostic approach (thoracentesis, fluid analysis).',
+                                'Clinical Skills (Practical/OSCE): Examining for effusion (stony dull percussion, decreased breath sounds).',
+                                'Integrated Concepts (Viva Voce): Linking causes to systemic diseases.'
+                            ]},
+                            { id: 'med_pulmo_pnm', name: 'Pneumothorax', details: [
+                                'Core Knowledge (Theory): Types. Clinical features. Diagnosis. Management of simple vs. *tension pneumothorax (emergency needle decompression, ICD)*.',
+                                'Clinical Skills (Practical/OSCE): Examining for pneumothorax (hyper-resonant percussion).',
+                                'Integrated Concepts (Viva Voce): Mechanism of tension pneumothorax.'
+                            ]},
+                            { id: 'med_pulmo_bronch', name: 'Bronchiectasis', details: [
+                                'Core Knowledge (Theory): Definition, causes. Clinical features (copious purulent sputum). Diagnosis (HRCT). Management.',
+                                'Clinical Skills (Practical/OSCE): Auscultating for coarse crepitations.',
+                                'Integrated Concepts (Viva Voce): Link to post-TB complications.'
+                            ]},
+                            { id: 'med_pulmo_ild', name: 'Interstitial Lung Diseases (ILD)', details: [
+                                'Core Knowledge (Theory): Classification. Clinical features. Examination finding (fine-end inspiratory crepitations). HRCT findings (honeycombing).',
+                                'Clinical Skills (Practical/OSCE): Identifying "Velcro-like" crepitations.',
+                                'Integrated Concepts (Viva Voce): Rheumatological associations.'
+                            ]},
+                            { id: 'med_pulmo_ca', name: '*Lung Cancer', details: [
+                                'Core Knowledge (Theory): Epidemiology, risk factors. Histological types (SCLC vs. NSCLC). Clinical features (local, metastatic, *paraneoplastic syndromes*). Staging. Treatment principles.',
+                                'Clinical Skills (Practical/OSCE): Examining for clubbing, Horner\'s, SVC obstruction.',
+                                'Integrated Concepts (Viva Voce): Pathology of different types.'
+                            ]},
+                            { id: 'med_pulmo_ards', name: 'Acute Respiratory Distress Syndrome (ARDS)', details: [
+                                'Core Knowledge (Theory): Definition (Berlin criteria). Causes. Pathophysiology. Management (protective lung ventilation).',
+                                'Clinical Skills (Practical/OSCE): Interpreting ABG for severe hypoxemia.',
+                                'Integrated Concepts (Viva Voce): Link to critical care and sepsis.'
+                            ]}
+                        ]
+                    },
+                    {
+                        id: 'med_gastro',
+                        topic: '2.3 Gastroenterology & Hepatology',
+                        subtopics: [
+                            { id: 'med_gastro_pud', name: 'Peptic Ulcer Disease & H. pylori', details: ['Core Knowledge (Theory): Pathophysiology (gastric vs. duodenal). Role of *H. pylori* and NSAIDs. Complications (bleeding, perforation, obstruction). H. pylori tests. Management (PPIs, eradication).', 'Clinical Skills (Practical/OSCE): History to differentiate ulcers. Epigastric tenderness.', 'Integrated Concepts (Viva Voce): Microbiology of H. pylori. Pharmacology of PPIs.']},
+                            { id: 'med_gastro_gerd', name: 'Gastroesophageal Reflux Disease (GERD)', details: ['Core Knowledge (Theory): Pathophysiology. Clinical features. Complications (esophagitis, Barrett\'s esophagus). Management.', 'Clinical Skills (Practical/OSCE): Counseling on lifestyle modifications.', 'Integrated Concepts (Viva Voce): Pathological changes in Barrett\'s esophagus.']},
+                            { id: 'med_gastro_gib', name: '*Upper and Lower GI Bleeding', details: ['Core Knowledge (Theory): Differentiating upper vs. lower. Common causes (*peptic ulcer, varices*; diverticulosis). Presentation (hematemesis, melena, hematochezia). Initial assessment and resuscitation (ABC). Specific management (endoscopy).', 'Clinical Skills (Practical/OSCE): Assessing hemodynamic stability. Performing DRE.', 'Integrated Concepts (Viva Voce): Link to management of shock.']},
+                            { id: 'med_gastro_mal', name: 'Malabsorption Syndromes (e.g., Celiac Disease)', details: ['Core Knowledge (Theory): Features of malabsorption. *Celiac disease*: pathogenesis, diagnosis (serology, biopsy), management (gluten-free diet).', 'Clinical Skills (Practical/OSCE): Detailed dietary history.', 'Integrated Concepts (Viva Voce): Histopathology of villous atrophy.']},
+                            { id: 'med_gastro_ibd', name: 'Inflammatory Bowel Disease (Crohn\'s, Ulcerative Colitis)', details: ['Core Knowledge (Theory): *Differentiating features of Crohn\'s and UC*. Extra-intestinal manifestations. Management (5-ASA, steroids, immunomodulators).', 'Clinical Skills (Practical/OSCE): History of chronic diarrhea.', 'Integrated Concepts (Viva Voce): Immunological basis of IBD.']},
+                            { id: 'med_gastro_panc', name: '*Acute and Chronic Pancreatitis', details: ['Core Knowledge (Theory): Etiologies (gallstones, alcohol). Pathophysiology. Diagnosis. *Severity assessment (Ranson\'s, APACHE II)*. Management of severe acute pancreatitis. Chronic pancreatitis features.', 'Clinical Skills (Practical/OSCE): Cullen\'s and Grey Turner\'s signs.', 'Integrated Concepts (Viva Voce): Surgical management of complications.']},
+                            { id: 'med_gastro_hep', name: '*Viral Hepatitis (A, B, C, E)', details: ['Core Knowledge (Theory): Transmission, course, prevention. *Interpretation of Hepatitis B serological markers*. Complications (chronic hepatitis, cirrhosis, HCC) with HBV/HCV.', 'Clinical Skills (Practical/OSCE): History for risk factors. Examining for jaundice, hepatomegaly.', 'Integrated Concepts (Viva Voce): Immunization (Hep A, B).']},
+                            { id: 'med_gastro_cld', name: '*Chronic Liver Disease & Cirrhosis (and complications)', details: ['Core Knowledge (Theory): Causes. Pathophysiology of portal hypertension. Management of complications: *ascites (SAAG, SBP)*, *variceal bleeding*, *hepatic encephalopathy (grading, management)*, hepatorenal syndrome.', 'Clinical Skills (Practical/OSCE): Examining for stigmata of CLD. Shifting dullness, fluid thrill. Grading hepatic encephalopathy.', 'Integrated Concepts (Viva Voce): Pathological features of cirrhosis.']},
+                            { id: 'med_gastro_ala', name: 'Amoebic Liver Abscess', details: ['Core Knowledge (Theory): Etiology (E. histolytica). Clinical features (fever, RUQ pain). Diagnosis (US). Management (metronidazole).', 'Clinical Skills (Practical/OSCE): Eliciting punching tenderness.', 'Integrated Concepts (Viva Voce): Microbiology of E. histolytica.']}
+                        ]
+                    },
+                    {
+                        id: 'med_nephro',
+                        topic: '2.4 Nephrology',
+                        subtopics: [
+                            { id: 'med_nephro_aki', name: '*Acute Kidney Injury (AKI)', details: ['Core Knowledge (Theory): Definition (KDIGO). Classification (pre-renal, intrinsic, post-renal). Pathophysiology. Management, indications for dialysis.', 'Clinical Skills (Practical/OSCE): Assessing fluid status. Interpreting urine microscopy.', 'Integrated Concepts (Viva Voce): Pathophysiology of ATN.']},
+                            { id: 'med_nephro_ckd', name: '*Chronic Kidney Disease (CKD)', details: ['Core Knowledge (Theory): Definition, staging (GFR). Causes (diabetes, hypertension). Uremia manifestations. Management of complications (anemia, MBD). *Renal replacement therapy (HD, PD, transplant)*.', 'Clinical Skills (Practical/OSCE): Examining an AV fistula. Counseling on dietary restrictions.', 'Integrated Concepts (Viva Voce): Physiology of GFR. Management of anemia in CKD.']},
+                            { id: 'med_nephro_ns', name: '*Nephrotic & Nephritic Syndromes', details: ['Core Knowledge (Theory): *Differentiating nephrotic (proteinuria, edema, hypoalbuminemia) and nephritic (hematuria, HTN, oliguria)*. Common causes in adults (MCD, FSGS, Membranous; PSGN, IgA).', 'Clinical Skills (Practical/OSCE): Examining for massive edema. Interpreting urinalysis (proteinuria, RBC casts).', 'Integrated Concepts (Viva Voce): Pathological basis of different GN.']},
+                            { id: 'med_nephro_gn', name: 'Glomerulonephritis (Post-streptococcal, IgA nephropathy)', details: ['Core Knowledge (Theory): Classic presentation of PSGN. Features of IgA nephropathy.', 'Clinical Skills (Practical/OSCE): History for preceding sore throat.', 'Integrated Concepts (Viva Voce): Immunological mechanisms.']},
+                            { id: 'med_nephro_uti', name: 'Urinary Tract Infections & Pyelonephritis', details: ['Core Knowledge (Theory): Differentiating upper vs. lower UTI. Pathogens. Features. Management.', 'Clinical Skills (Practical/OSCE): Eliciting renal angle tenderness.', 'Integrated Concepts (Viva Voce): Microbiology of E. coli.']},
+                            { id: 'med_nephro_ras', name: 'Renal Artery Stenosis', details: ['Core Knowledge (Theory): Cause of secondary HTN. Clinical clues. Diagnosis.', 'Clinical Skills (Practical/OSCE): Auscultating for renal bruit.', 'Integrated Concepts (Viva Voce): Pathophysiology of renovascular HTN.']},
+                            { id: 'med_nephro_elec', name: 'Acid-Base & Electrolyte Imbalances (*Hyponatremia, Hyperkalemia*)', details: ['Core Knowledge (Theory): Approach to *hyponatremia* (volume status). *ECG changes and emergency management of hyperkalemia*. Metabolic acidosis/alkalosis.', 'Clinical Skills (Practical/OSCE): Interpreting an ABG. Recognizing ECG changes of hyperkalemia.', 'Integrated Concepts (Viva Voce): Renal physiology of Na/K handling.']}
+                        ]
+                    },
+                    {
+                        id: 'med_neuro',
+                        topic: '2.5 Neurology',
+                        subtopics: [
+                            { id: 'med_neuro_stroke', name: '*Stroke (Ischemic & Hemorrhagic)', details: ['Core Knowledge (Theory): Definition, types. Risk factors. *Clinical features by vascular territories (MCA, ACA, PCA)*. Imaging (CT/MRI). *Management of acute ischemic stroke (thrombolysis window)*. Hemorrhagic stroke management. Secondary prevention.', 'Clinical Skills (Practical/OSCE): Focused neurological exam to localize. NIHSS score concept.', 'Integrated Concepts (Viva Voce): Neuroanatomy of cerebral circulation.']},
+                            { id: 'med_neuro_men', name: '*Meningitis (Pyogenic, Tubercular, Viral) & Encephalitis', details: ['Core Knowledge (Theory): Clinical presentation. *Differentiating CSF findings (cells, protein, sugar)*. Organisms. Empirical antibiotics. TB meningitis. Encephalitis features.', 'Clinical Skills (Practical/OSCE): Eliciting meningeal signs (Kernig\'s, Brudzinski\'s).', 'Integrated Concepts (Viva Voce): Pathophysiology of cerebral edema.']},
+                            { id: 'med_neuro_seizure', name: '*Seizure Disorders & Status Epilepticus', details: ['Core Knowledge (Theory): Classification (focal vs. generalized). Etiology. Features. AED therapy principles. *Emergency management of status epilepticus*.', 'Clinical Skills (Practical/OSCE): History from eyewitness. Counseling on compliance.', 'Integrated Concepts (Viva Voce): Pharmacology of AEDs.']},
+                            { id: 'med_neuro_headache', name: 'Headache (Migraine, Tension, Cluster)', details: ['Core Knowledge (Theory): Differentiating features. "Red flag" signs. Acute and prophylactic management.', 'Clinical Skills (Practical/OSCE): Detailed headache history.', 'Integrated Concepts (Viva Voce): Pathophysiology of migraine.']},
+                            { id: 'med_neuro_pn', name: 'Peripheral Neuropathy', details: ['Core Knowledge (Theory): Common causes (diabetes). Clinical patterns (stocking-glove).', 'Clinical Skills (Practical/OSCE): Sensory/motor exam (vibration, position sense).', 'Integrated Concepts (Viva Voce): Link to diabetic complications.']},
+                            { id: 'med_neuro_gbs', name: 'Guillain-Barré Syndrome (GBS)', details: ['Core Knowledge (Theory): Classic presentation (acute, ascending, areflexic paralysis). Preceding infection. CSF (albumino-cytological dissociation). Management (respiratory monitoring, IVIg/plasmapheresis).', 'Clinical Skills (Practical/OSCE): Eliciting areflexia.', 'Integrated Concepts (Viva Voce): Pathophysiology of demyelination.']},
+                            { id: 'med_neuro_mg', name: 'Myasthenia Gravis', details: ['Core Knowledge (Theory): Pathophysiology (AChR antibodies). Clinical features (fluctuating weakness, ptosis, diplopia). Diagnostic tests. Management. Myasthenic crisis.', 'Clinical Skills (Practical/OSCE): Testing for fatiguability.', 'Integrated Concepts (Viva Voce): Physiology of the NMJ.']},
+                            { id: 'med_neuro_park', name: 'Parkinson\'s Disease & Movement Disorders', details: ['Core Knowledge (Theory): Pathophysiology (dopamine depletion). Cardinal features (bradyksemia, rigidity, tremor, postural instability). Management (levodopa).', 'Clinical Skills (Practical/OSCE): Eliciting cogwheel rigidity, pill-rolling tremor. Assessing gait.', 'Integrated Concepts (Viva Voce): Neuroanatomy of basal ganglia.']},
+                            { id: 'med_neuro_sah', name: 'Subarachnoid Hemorrhage (SAH)', details: ['Core Knowledge (Theory): Causes (berry aneurysm). "Thunderclap headache". Diagnosis (CT, LP for xanthochromia). Management.', 'Clinical Skills (Practical/OSCE): Recognizing clinical presentation.', 'Integrated Concepts (Viva Voce): Link to neurosurgery.']}
+                        ]
+                    },
+                    {
+                        id: 'med_endo',
+                        topic: '2.6 Endocrinology',
+                        subtopics: [
+                            { id: 'med_endo_dm', name: '*Diabetes Mellitus (Type 1 & 2, complications, DKA, HHS)', details: ['Core Knowledge (Theory): Differentiating T1/T2. Diagnostic criteria. Management (OHAs, insulin). *Chronic micro/macrovascular complications*. *Emergency management of DKA and HHS*.', 'Clinical Skills (Practical/OSCE): Examining diabetic feet. Counseling on diet, exercise, monitoring.', 'Integrated Concepts (Viva Voce): Biochemistry of glucose metabolism. Pathophysiology of complications.']},
+                            { id: 'med_endo_thyroid', name: '*Thyroid Disorders (Hypo- & Hyperthyroidism, Storm, Myxedema Coma)', details: ['Core Knowledge (Theory): Causes, features, diagnosis, management. Interpreting TFTs. *Management of thyroid storm and myxedema coma*.', 'Clinical Skills (Practical/OSCE): Examining thyroid. Eliciting signs (tremor, tachycardia; delayed reflexes).', 'Integrated Concepts (Viva Voce): H-P-Thyroid axis.']},
+                            { id: 'med_endo_cush', name: 'Cushing\'s Syndrome', details: ['Core Knowledge (Theory): Causes. Clinical features. Diagnosis (dexamethasone suppression).', 'Clinical Skills (Practical/OSCE): Recognizing cushingoid habitus.', 'Integrated Concepts (Viva Voce): HPA axis.']},
+                            { id: 'med_endo_add', name: 'Addison\'s Disease & Adrenal Insufficiency', details: ['Core Knowledge (Theory): Causes. Clinical features (weakness, hyperpigmentation, hypotension). *Management of acute adrenal crisis*.', 'Clinical Skills (Practical/OSCE): Examining for postural hypotension, hyperpigmentation.', 'Integrated Concepts (Viva Voce): Role of cortisol and aldosterone.']},
+                            { id: 'med_endo_pheo', name: 'Pheochromocytoma', details: ['Core Knowledge (Theory): Classic triad. Diagnosis. Preoperative management (alpha/beta blockade).', 'Clinical Skills (Practical/OSCE): History for paroxysmal symptoms.', 'Integrated Concepts (Viva Voce): Link to surgical management.']},
+                            { id: 'med_endo_pit', name: 'Disorders of the Pituitary (Acromegaly, Prolactinoma)', details: ['Core Knowledge (Theory): Features of excess GH and prolactin. Management principles.', 'Clinical Skills (Practical/OSCE): Recognizing features of acromegaly.', 'Integrated Concepts (Viva Voce): Endocrine feedback loops.']},
+                            { id: 'med_endo_ca', name: 'Disorders of Calcium Metabolism (Hyper- & Hypoparathyroidism)', details: ['Core Knowledge (Theory): Causes, features of hyper/hypocalcemia. Role of PTH.', 'Clinical Skills (Practical/OSCE): Eliciting Chvostek\'s and Trousseau\'s signs.', 'Integrated Concepts (Viva Voce): Physiology of calcium homeostasis.']}
+                        ]
+                    },
+                    {
+                        id: 'med_haema',
+                        topic: '2.7 Haematology',
+                        subtopics: [
+                            { id: 'med_haema_anemia', name: '*Anemias (Iron Deficiency, Megaloblastic, Hemolytic, Aplastic)', details: ['Core Knowledge (Theory): Classification. Features, peripheral smear, tests, management for: *Iron Deficiency*, *Megaloblastic (B12/Folate)*, Hemolytic (intravascular vs. extravascular; causes), Aplastic.', 'Clinical Skills (Practical/OSCE): Examining for pallor, koilonychia, jaundice, glossitis. Interpreting CBC/smear.', 'Integrated Concepts (Viva Voce): Erythropoiesis. Pathophysiology of jaundice.']},
+                            { id: 'med_haema_leuk', name: 'Leukemias (Acute & Chronic)', details: ['Core Knowledge (Theory): Differentiating acute vs. chronic. Key features of *ALL*, *AML*, *CML* (Philadelphia chromosome), *CLL*.', 'Clinical Skills (Practical/OSCE): Examining for lymphadenopathy, splenomegaly.', 'Integrated Concepts (Viva Voce): Pathological basis and cytogenetics.']},
+                            { id: 'med_haema_lymph', name: 'Lymphomas (Hodgkin\'s & Non-Hodgkin\'s)', details: ['Core Knowledge (Theory): Differentiating HL (Reed-Sternberg cells) from NHL. Ann Arbor staging.', 'Clinical Skills (Practical/OSCE): Systematic exam of lymph node groups.', 'Integrated Concepts (Viva Voce): Histopathology of lymph nodes.']},
+                            { id: 'med_haema_mm', name: 'Multiple Myeloma', details: ['Core Knowledge (Theory): Pathophysiology. CRAB criteria (HyperCalcemia, Renal failure, Anemia, Bone lesions). Diagnosis (M-spike, Bence Jones proteins).', 'Clinical Skills (Practical/OSCE): Eliciting bone tenderness.', 'Integrated Concepts (Viva Voce): Interpreting serum protein electrophoresis.']},
+                            { id: 'med_haema_bleed', name: 'Bleeding & Coagulation Disorders (ITP, Hemophilia)', details: ['Core Knowledge (Theory): Differentiating platelet vs. factor disorders. Features of ITP, Hemophilia A/B. Interpreting coagulation profile.', 'Clinical Skills (Practical/OSCE): Taking a history of bleeding.', 'Integrated Concepts (Viva Voce): Physiology of hemostasis.']},
+                            { id: 'med_haema_thrombo', name: 'Thrombocytopenia', details: ['Core Knowledge (Theory): Broad causes and clinical approach.', 'Clinical Skills (Practical/OSCE): Examining for petechiae, purpura.', 'Integrated Concepts (Viva Voce): Link to infectious causes like dengue.']}
+                        ]
+                    },
+                    {
+                        id: 'med_rheum',
+                        topic: '2.8 Rheumatology & Connective Tissue Disorders',
+                        subtopics: [
+                            { id: 'med_rheum_ra', name: '*Rheumatoid Arthritis', details: ['Core Knowledge (Theory): Pathophysiology. Clinical features (symmetrical polyarthritis, morning stiffness). Hand deformities. Extra-articular manifestations. Diagnosis (RF, anti-CCP). Management (DMARDs).', 'Clinical Skills (Practical/OSCE): Examining hands for arthritis, deformities.', 'Integrated Concepts (Viva Voce): Immunological basis.']},
+                            { id: 'med_rheum_sle', name: '*Systemic Lupus Erythematosus (SLE)', details: ['Core Knowledge (Theory): Pathophysiology. Diverse clinical manifestations. Diagnostic criteria, autoantibodies (ANA, anti-dsDNA). Management.', 'Clinical Skills (Practical/OSCE): Recognizing malar rash.', 'Integrated Concepts (Viva Voce): Differentiating from other CTDs.']},
+                            { id: 'med_rheum_as', name: 'Ankylosing Spondylitis', details: ['Core Knowledge (Theory): Inflammatory back pain. HLA-B27. Bamboo spine.', 'Clinical Skills (Practical/OSCE): Performing Schober\'s test.', 'Integrated Concepts (Viva Voce): Seronegative spondyloarthropathies.']},
+                            { id: 'med_rheum_gout', name: 'Gout', details: ['Core Knowledge (Theory): Pathophysiology (hyperuricemia). Acute gouty arthritis. Diagnosis (joint fluid). Management (acute vs. long-term).', 'Clinical Skills (Practical/OSCE): Examining hot, swollen joint.', 'Integrated Concepts (Viva Voce): Purine metabolism.']},
+                            { id: 'med_rheum_vasc', name: 'Vasculitis Disorders', details: ['Core Knowledge (Theory): Classification. Key features of Giant Cell Arteritis, Takayasu, ANCA-associated vasculitides.', 'Clinical Skills (Practical/OSCE): Palpating temporal arteries.', 'Integrated Concepts (Viva Voce): Pathological features.']}
+                        ]
+                    },
+                    {
+                        id: 'med_infect',
+                        topic: '2.9 Infectious Diseases',
+                        subtopics: [
+                            { id: 'med_infect_typhoid', name: '*Enteric Fever (Typhoid)', details: ['Core Knowledge (Theory): Agent (S. typhi). Pathogenesis. Features (step-ladder fever, relative bradycardia, rose spots). Complications (perforation). Diagnosis. Management.', 'Clinical Skills (Practical/OSCE): Examining for splenomegaly.', 'Integrated Concepts (Viva Voce): Microbiology, vaccination.']},
+                            { id: 'med_infect_malaria', name: '*Malaria (P. vivax, P. falciparum)', details: ['Core Knowledge (Theory): Life cycle. Differentiating P. vivax/falciparum. Diagnosis (smear, RDT). *Management of uncomplicated and severe/complicated malaria (cerebral)*.', 'Clinical Skills (Practical/OSCE): Preparing/examining peripheral smear.', 'Integrated Concepts (Viva Voce): Link to PSM (NVBDCP).']},
+                            { id: 'med_infect_dengue', name: '*Dengue Fever', details: ['Core Knowledge (Theory): Virology, transmission. Clinical phases (febrile, critical, recovery). *Classification (with/without warning signs, Severe Dengue)*. Management (fluid management).', 'Clinical Skills (Practical/OSCE): Tourniquet test. Assessing for warning signs.', 'Integrated Concepts (Viva Voce): Pathophysiology of plasma leakage.']},
+                            { id: 'med_infect_lepto', name: 'Leptospirosis', details: ['Core Knowledge (Theory): Transmission. Biphasic illness. Weil\'s disease. Diagnosis, management.', 'Clinical Skills (Practical/OSCE): History of environmental exposure.', 'Integrated Concepts (Viva Voce): Zoonotic diseases.']},
+                            { id: 'med_infect_hiv', name: '*HIV/AIDS & Opportunistic Infections', details: ['Core Knowledge (Theory): Pathophysiology (CD4). Transmission, prevention. Diagnosis. *Principles of ART*. *Common OIs* (PJP, toxo, crypto, TB). Post-exposure prophylaxis.', 'Clinical Skills (Practical/OSCE): Counseling for HIV testing (AETCOM).', 'Integrated Concepts (Viva Voce): Link to PSM (NACO).']},
+                            { id: 'med_infect_rabies', name: 'Rabies', details: ['Core Knowledge (Theory): Transmission. Features (hydrophobia). *Post-exposure prophylaxis (wound care, vaccine, immunoglobulins)*.', 'Clinical Skills (Practical/OSCE): Classifying animal bites.', 'Integrated Concepts (Viva Voce): Virology, prevention.']},
+                            { id: 'med_infect_tetanus', name: 'Tetanus', details: ['Core Knowledge (Theory): Pathogenesis (toxin). Features (trismus, opisthotonus). Management, prevention.', 'Clinical Skills (Practical/OSCE): Assessing wound for tetanus risk.', 'Integrated Concepts (Viva Voce): Microbiology, toxoid vaccines.']}
+                        ]
+                    },
+                    {
+                        id: 'med_emerg',
+                        topic: '2.10 Emergency Medicine, Critical Care & Toxicology',
+                        subtopics: [
+                            { id: 'med_emerg_shock', name: '*Shock (Hypovolemic, Cardiogenic, Septic, Anaphylactic)', details: ['Core Knowledge (Theory): Definition. *Differentiating pathophysiology, features, hemodynamics of 4 types*. Initial approach. Management principles.', 'Clinical Skills (Practical/OSCE): Rapid assessment (ABCDE).', 'Integrated Concepts (Viva Voce): Integration of physiology, pharmacology.']},
+                            { id: 'med_emerg_bls', name: 'Basic & Advanced Cardiac Life Support (BLS, ACLS)', details: ['Core Knowledge (Theory): Recognizing arrest. CPR. AED. ACLS algorithms.', 'Clinical Skills (Practical/OSCE): *Demonstrating CPR and bag-mask ventilation on manikin*.', 'Integrated Concepts (Viva Voce): Core competency.']},
+                            { id: 'med_emerg_poison', name: '*Poisoning (Organophosphates, Paracetamol, Snake Bite, Barbiturates)', details: ['Core Knowledge (Theory): General principles. Specific features/management of: *OP poisoning (cholinergic crisis, atropine, oximes)*, Paracetamol (nomogram, NAC), *Snake bite (neurotoxic vs. vasculotoxic, ASV)*, Barbiturates.', 'Clinical Skills (Practical/OSCE): Identifying a toxidrome.', 'Integrated Concepts (Viva Voce): Pharmacology of antidotes. Forensic aspects.']}
+                        ]
+                    },
+                    {
+                        id: 'med_psych',
+                        topic: '2.11 Allied Specialty: Psychiatry',
+                        subtopics: [
+                            { id: 'med_psych_schizo', name: 'Schizophrenia & Psychotic Disorders', details: ['Core Knowledge (Theory): Etiology, pathophysiology. Features (positive/negative symptoms). Diagnosis. Management (antipsychotics, side effects - EPS).', 'Clinical Skills (Practical/OSCE): Performing Mental Status Examination (MSE).', 'Integrated Concepts (Viva Voce): Dopamine hypothesis.']},
+                            { id: 'med_psych_mood', name: '*Mood Disorders (Depression, Bipolar Disorder)', details: ['Core Knowledge (Theory): Features/diagnosis of MDD, BPAD. Management (antidepressants, mood stabilizers). Assessing suicide risk.', 'Clinical Skills (Practical/OSCE): Psychiatric history. Assessing mood. Counseling.', 'Integrated Concepts (Viva Voce): Neurotransmitter theories.']},
+                            { id: 'med_psych_anxiety', name: '*Anxiety Disorders (GAD, Panic, Phobias, OCD)', details: ['Core Knowledge (Theory): Differentiating features. Management (CBT, pharmacotherapy).', 'Clinical Skills (Practical/OSCE): Eliciting symptoms.', 'Integrated Concepts (Viva Voce): Differentiating fear/anxiety.']},
+                            { id: 'med_psych_somato', name: 'Somatoform & Dissociative Disorders', details: ['Core Knowledge (Theory): Concepts of somatization, conversion disorder.', 'Clinical Skills (Practical/OSCE): Approach to medically unexplained symptoms.', 'Integrated Concepts (Viva Voce): Mind-body connection.']},
+                            { id: 'med_psych_pers', name: 'Personality Disorders', details: ['Core Knowledge (Theory): Broad understanding of clusters.', 'Clinical Skills (Practical/OSCE): Recognizing maladaptive patterns.', 'Integrated Concepts (Viva Voce): Doctor-patient relationship.']},
+                            { id: 'med_psych_sub', name: 'Substance Use Disorders', details: ['Core Knowledge (Theory): Dependence, tolerance, withdrawal. Management of alcohol withdrawal (delirium tremens).', 'Clinical Skills (Practical/OSCE): History of substance use.', 'Integrated Concepts (Viva Voce): Social/legal aspects.']},
+                            { id: 'med_psych_org', name: 'Organic Mental Disorders (Delirium, Dementia)', details: ['Core Knowledge (Theory): Differentiating delirium (acute) from dementia (chronic). Causes of delirium. Alzheimer\'s features.', 'Clinical Skills (Practical/OSCE): Assessing cognitive function (MMSE).', 'Integrated Concepts (Viva Voce): Link to geriatric medicine.']}
+                        ]
+                    },
+                    {
+                        id: 'med_derma',
+                        topic: '2.12 Allied Specialty: Dermatology, Venereology & Leprosy',
+                        subtopics: [
+                            { id: 'med_derma_infect', name: 'Infections (Pyoderma, Fungal, Viral)', details: ['Core Knowledge (Theory): Features/management of impetigo, folliculitis, cellulitis; tinea; herpes simplex/zoster.', 'Clinical Skills (Practical/OSCE): Describing dermatological lesions.', 'Integrated Concepts (Viva Voce): Microbiology.']},
+                            { id: 'med_derma_infest', name: '*Scabies*, Pediculosis', details: ['Core Knowledge (Theory): *Scabies* presentation (burrows, pruritus). Management of patient/contacts.', 'Clinical Skills (Practical/OSCE): Identifying burrows. Counseling.', 'Integrated Concepts (Viva Voce): Public health.']},
+                            { id: 'med_derma_eczema', name: 'Eczema/Dermatitis', details: ['Core Knowledge (Theory): Types (atopic, contact). Management.', 'Clinical Skills (Practical/OSCE): History for atopy.', 'Integrated Concepts (Viva Voce): Immunological basis.']},
+                            { id: 'med_derma_psor', name: '*Psoriasis* & Lichen Planus', details: ['Core Knowledge (Theory): *Psoriasis* variants, features (scales, Auspitz sign). Lichen planus features.', 'Clinical Skills (Practical/OSCE): Identifying psoriatic plaques.', 'Integrated Concepts (Viva Voce): Psoriatic arthritis.']},
+                            { id: 'med_derma_vesic', name: 'Vesiculobullous Diseases (Pemphigus)', details: ['Core Knowledge (Theory): Pemphigus Vulgaris (flaccid bullae, Nikolsky\'s sign).', 'Clinical Skills (Practical/OSCE): Differentiating from bullous pemphigoid.', 'Integrated Concepts (Viva Voce): Autoimmune mechanisms.']},
+                            { id: 'med_derma_std', name: '*Sexually Transmitted Diseases (Syphilis, Gonorrhea, Herpes)', details: ['Core Knowledge (Theory): Stages of *syphilis*. Gonorrhea/herpes presentation. Syndromic management.', 'Clinical Skills (Practical/OSCE): Taking sexual history.', 'Integrated Concepts (Viva Voce): Link to PSM (NACO).']},
+                            { id: 'med_derma_leprosy', name: '*Leprosy', details: ['Core Knowledge (Theory): Agent. Spectrum (tuberculoid to lepromatous). Cardinal signs. Diagnosis. *MDT management*. Lepra reactions.', 'Clinical Skills (Practical/OSCE): Examining for thickened nerves, sensory loss.', 'Integrated Concepts (Viva Voce): Link to PSM (NLEP).']},
+                            { id: 'med_derma_drug', name: 'Drug Eruptions (*Stevens-Johnson Syndrome/TEN*)', details: ['Core Knowledge (Theory): Recognizing patterns. *Emergency management of SJS/TEN*.', 'Clinical Skills (Practical/OSCE): Detailed drug history.', 'Integrated Concepts (Viva Voce): Critical medical emergency.']}
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'surgery',
+                subject: 'Section 3: General Surgery and Allied Specialties',
+                topics: [
+                    {
+                        id: 'surg_gen',
+                        topic: '3.1 General Principles of Surgery',
+                        subtopics: [
+                            { id: 'surg_gen_met', name: '*Metabolic Response to Injury & Shock', details: ['Core Knowledge (Theory): Homeostasis. SIRS. Neuroendocrine response (Ebb/Flow). *Classification, pathophysiology, features of hypovolemic, cardiogenic, septic, neurogenic shock*. Resuscitation.', 'Clinical Skills (Practical/OSCE): Assessing shock patient. IV access.', 'Integrated Concepts (Viva Voce): Stress response. Link to Anesthesiology.']},
+                            { id: 'surg_gen_fluid', name: 'Fluid, Electrolyte, and Acid-Base Balance', details: ['Core Knowledge (Theory): Fluid compartments. Requirements. Management of *hyponatremia, hyperkalemia*. Acid-base disorders. IV fluid types (crystalloids, colloids).', 'Clinical Skills (Practical/OSCE): Calculating fluid requirements. Interpreting ABG.', 'Integrated Concepts (Viva Voce): Renal physiology. Biochemistry.']},
+                            { id: 'surg_gen_infect', name: '*Surgical Infections, Sepsis, Asepsis & Sterilization', details: ['Core Knowledge (Theory): SSIs. Abscesses, cellulitis, necrotizing fasciitis. Sepsis/septic shock management. *Asepsis, disinfection, sterilization (autoclave)*. Antibiotic prophylaxis.', 'Clinical Skills (Practical/OSCE): Hand hygiene, gloving. I&D of abscess (model).', 'Integrated Concepts (Viva Voce): Microbiology. Antibiotic pharmacology.']},
+                            { id: 'surg_gen_wound', name: '*Wound Healing (Primary, Secondary), Sutures, and Drains', details: ['Core Knowledge (Theory): Phases of wound healing. Healing by intention. Factors affecting healing. Scars/keloids. *Suture classification (absorbable/non-absorbable)*. Types/indications for drains.', 'Clinical Skills (Practical/OSCE): Basic suturing/knot-tying (model). Dressing wound.', 'Integrated Concepts (Viva Voce): Pathology of inflammation/repair.']},
+                            { id: 'surg_gen_trauma', name: '*Trauma Management (ATLS Principles, Triage)', details: ['Core Knowledge (Theory): ATLS protocol: Primary survey (ABCDE), resuscitation, secondary survey. *Glasgow Coma Scale (GCS)*. Head, chest, abdominal trauma. Triage.', 'Clinical Skills (Practical/OSCE): Primary survey (manikin). Assessing GCS.', 'Integrated Concepts (Viva Voce): Core competency (Surgery, Ortho, Anes, Radio).']},
+                            { id: 'surg_gen_burns', name: '*Burns (Rule of Nines, Parkland Formula, Management)', details: ['Core Knowledge (Theory): Classification. *Estimating TBSA (Rule of Nines)*. Burn shock. *Fluid resuscitation (Parkland formula)*. Wound management, inhalation injury.', 'Clinical Skills (Practical/OSCE): Calculating fluid requirements.', 'Integrated Concepts (Viva Voce): Forensic aspects.']},
+                            { id: 'surg_gen_trans', name: 'Blood Transfusion Principles & Complications', details: ['Core Knowledge (Theory): Indications for blood products. *Complications of transfusion*. Management of transfusion reaction.', 'Clinical Skills (Practical/OSCE): Cross-matching principles.', 'Integrated Concepts (Viva Voce): Immunohematology.']},
+                            { id: 'surg_gen_nutri', name: 'Surgical Nutrition', details: ['Core Knowledge (Theory): Assessing nutritional status. Enteral/parenteral nutrition.', 'Clinical Skills (Practical/OSCE): Inserting NG tube.', 'Integrated Concepts (Viva Voce): Biochemistry of metabolism.']},
+                            { id: 'surg_gen_onco', name: 'Principles of Oncology & Chemotherapy', details: ['Core Knowledge (Theory): Biology of cancer. Staging (TNM). Treatment modalities (surgery, RT, chemo, immuno).', 'Clinical Skills (Practical/OSCE): Counseling/informed consent (AETCOM).', 'Integrated Concepts (Viva Voce): Pathology of neoplasia. Pharmacology.']},
+                            { id: 'surg_gen_transplant', name: 'Transplantation Immunology', details: ['Core Knowledge (Theory): Graft rejection. HLA matching. Immunosuppressive therapy.', 'Clinical Skills (Practical/OSCE): Counseling on organ donation (AETCOM).', 'Integrated Concepts (Viva Voce): Ethical/legal issues.']}
+                        ]
+                    },
+                    {
+                        id: 'surg_gi',
+                        topic: '3.2 Gastrointestinal Surgery',
+                        subtopics: [
+                            { id: 'surg_gi_upper', name: 'Upper GI: Oesophagus (GERD, Carcinoma), Stomach & Duodenum (*Peptic Ulcer complications*, Carcinoma)', details: ['Core Knowledge (Theory): Surgical management of GERD. Carcinoma of esophagus. *Surgical management of PUD complications (perforation, bleeding, obstruction)*. Carcinoma of stomach.', 'Clinical Skills (Practical/OSCE): History of dysphagia/dyspepsia.', 'Integrated Concepts (Viva Voce): Anatomy of stomach/blood supply.']},
+                            { id: 'surg_gi_lower', name: 'Small & Large Intestine: *Intestinal Obstruction*, *Appendicitis*, IBD (Surgical), Colorectal Carcinoma', details: ['Core Knowledge (Theory): Cardinal features of *intestinal obstruction*. Small vs. large bowel. *Acute appendicitis* features/management. Surgical aspects of IBD. Colorectal cancer.', 'Clinical Skills (Practical/OSCE): Examining acute abdomen. Eliciting appendicitis signs. DRE.', 'Integrated Concepts (Viva Voce): Mechanical vs. paralytic ileus.']},
+                            { id: 'surg_gi_anorectal', name: 'Anorectal Disorders: *Hemorrhoids, Fissure-in-ano, Fistula-in-ano*', details: ['Core Knowledge (Theory): Management of hemorrhoids. Acute/chronic fissure. Classification (Goodsall\'s rule) / management of fistula.', 'Clinical Skills (Practical/OSCE): Inspection and DRE.', 'Integrated Concepts (Viva Voce): Anatomy of anal canal.']},
+                            { id: 'surg_gi_hpb', name: 'Hepatobiliary & Pancreatic: *Gallstones & Cholecystitis*, Obstructive Jaundice, *Abscesses*, Pancreatitis, Carcinoma, Portal HTN', details: ['Core Knowledge (Theory): *Cholelithiasis and complications (cholecystitis, cholangitis)*. Obstructive jaundice (Courvoisier\'s law). *Liver abscesses*. *Pancreatitis complications (pseudocyst)*. Carcinoma head of pancreas (Whipple\'s). Surgical shunts.', 'Clinical Skills (Practical/OSCE): Eliciting Murphy\'s sign. Examining jaundiced patient.', 'Integrated Concepts (Viva Voce): Anatomy (Calot\'s triangle).']},
+                            { id: 'surg_gi_hernia', name: 'Abdominal Wall & Hernia: *Inguinal, Femoral, Umbilical, Incisional Hernias*', details: ['Core Knowledge (Theory): Anatomy of inguinal canal. Direct vs. indirect. Management of hernias. Complications (obstruction, strangulation).', 'Clinical Skills (Practical/OSCE): *Examining inguinoscrotal swelling*. Differentiating groin lumps.', 'Integrated Concepts (Viva Voce): Embryology of indirect hernia.']}
+                        ]
+                    },
+                    {
+                        id: 'surg_endo',
+                        topic: '3.3 Endocrine & Breast Surgery',
+                        subtopics: [
+                            { id: 'surg_endo_thyroid', name: '*Thyroid Gland (Goitre, Solitary Nodule, Carcinoma)', details: ['Core Knowledge (Theory): Goitre classification. Solitary thyroid nodule evaluation. Thyroid carcinoma types/management. Complications of thyroidectomy (RLN injury, hypocalcemia).', 'Clinical Skills (Practical/OSCE): *Examining a thyroid swelling*.', 'Integrated Concepts (Viva Voce): Anatomy of RLN.']},
+                            { id: 'surg_endo_para', name: 'Parathyroid Glands (Hyperparathyroidism)', details: ['Core Knowledge (Theory): Features/management of primary hyperparathyroidism.', 'Clinical Skills (Practical/OSCE): History for hypercalcemia symptoms.', 'Integrated Concepts (Viva Voce): Calcium metabolism.']},
+                            { id: 'surg_endo_adrenal', name: 'Adrenal Glands (Pheochromocytoma, Cushing\'s)', details: ['Core Knowledge (Theory): Surgical management of pheochromocytoma/adrenal tumors.', 'Clinical Skills (Practical/OSCE): Preoperative preparation.', 'Integrated Concepts (Viva Voce): Link to Endocrinology.']},
+                            { id: 'surg_endo_breast', name: '*Breast (Benign Breast Disease, Carcinoma of Breast)', details: ['Core Knowledge (Theory): Triple assessment. Benign diseases (fibroadenoma). Risk factors, screening, diagnosis, staging, *multidisciplinary management of breast cancer*. Surgical options (BCS vs. mastectomy).', 'Clinical Skills (Practical/OSCE): *Performing clinical breast examination*.', 'Integrated Concepts (Viva Voce): Pathology. RT/Chemo principles.']}
+                        ]
+                    },
+                    {
+                        id: 'surg_vasc',
+                        topic: '3.4 Vascular Surgery',
+                        subtopics: [
+                            { id: 'surg_vasc_pvd', name: '*Peripheral Vascular Disease (Occlusive & Vasospastic)', details: ['Core Knowledge (Theory): Features of chronic lower limb ischemia (claudication, rest pain, gangrene). Buerger\'s disease.', 'Clinical Skills (Practical/OSCE): Examining peripheral pulses. Calculating ABI.', 'Integrated Concepts (Viva Voce): Arterial vs. venous ulcers.']},
+                            { id: 'surg_vasc_aneurysm', name: 'Aneurysms', details: ['Core Knowledge (Theory): Definition, common sites (aortic). Management.', 'Clinical Skills (Practical/OSCE): Palpating expansile AAA.', 'Integrated Concepts (Viva Voce): Pathophysiology.']},
+                            { id: 'surg_vasc_veins', name: '*Varicose Veins & Deep Vein Thrombosis (DVT)', details: ['Core Knowledge (Theory): Pathophysiology/management of varicose veins. DVT risk factors, features, diagnosis, management. DVT complications (PE).', 'Clinical Skills (Practical/OSCE): Tests for varicose veins (Trendelenburg). Eliciting Homan\'s sign.', 'Integrated Concepts (Viva Voce): Venous anatomy of lower limb.']}
+                        ]
+                    },
+                    {
+                        id: 'surg_head',
+                        topic: '3.5 Head, Neck & Thoracic Surgery',
+                        subtopics: [
+                            { id: 'surg_head_salivary', name: 'Disorders of Salivary Glands', details: ['Core Knowledge (Theory): Features of salivary swellings (pleomorphic adenoma).', 'Clinical Skills (Practical/OSCE): Examining parotid/submandibular glands.', 'Integrated Concepts (Viva Voce): Facial nerve anatomy.']},
+                            { id: 'surg_head_oral', name: 'Oral Cancers', details: ['Core Knowledge (Theory): Risk factors. Features/management.', 'Clinical Skills (Practical/OSCE): Examining oral cavity.', 'Integrated Concepts (Viva Voce): Link to ENT.']},
+                            { id: 'surg_head_chest', name: '*Chest Trauma (Pneumothorax, Hemothorax, Flail Chest)', details: ['Core Knowledge (Theory): Pathophysiology, diagnosis, *emergency management of tension pneumothorax, open pneumothorax, massive hemothorax, flail chest*. Thoracotomy indications.', 'Clinical Skills (Practical/OSCE): ICD insertion (model).', 'Integrated Concepts (Viva Voce): ATLS protocol.']},
+                            { id: 'surg_head_lung', name: 'Lung Cancer (Surgical aspects)', details: ['Core Knowledge (Theory): Indications for resection in NSCLC.', 'Clinical Skills (Practical/OSCE): Interpreting CXR for lung mass.', 'Integrated Concepts (Viva Voce): Link to Respiratory Medicine.']}
+                        ]
+                    },
+                    {
+                        id: 'surg_ortho',
+                        topic: '3.6 Allied Specialty: Orthopaedics (including Trauma)',
+                        subtopics: [
+                            { id: 'surg_ortho_frac', name: 'Trauma: Principles & Common Fractures (*Colles\', Supracondylar, Femur Neck*), Complications (Compartment syndrome, Fat embolism)', details: ['Core Knowledge (Theory): Fracture classification. Management principles. Features of common fractures. *Emergency management of compartment syndrome*. Fat embolism features.', 'Clinical Skills (Practical/OSCE): Describing X-ray. Applying splints/slabs.', 'Integrated Concepts (Viva Voce): Bone healing.']},
+                            { id: 'surg_ortho_infect', name: 'Infections: Osteomyelitis, Septic Arthritis, Tuberculosis of Spine (Pott\'s) & Hip', details: ['Core Knowledge (Theory): Pathogenesis, features, management of osteomyelitis/septic arthritis. TB spine/hip features.', 'Clinical Skills (Practical/OSCE): Examining swollen joint.', 'Integrated Concepts (Viva Voce): Microbiology.']},
+                            { id: 'surg_ortho_tumor', name: 'Bone Tumors: Benign (Osteochondroma) & Malignant (Osteosarcoma, Ewing\'s)', details: ['Core Knowledge (Theory): Differentiating benign/malignant. Key features.', 'Clinical Skills (Practical/OSCE): Interpreting X-ray features.', 'Integrated Concepts (Viva Voce): Pathology.']},
+                            { id: 'surg_ortho_degen', name: 'Degenerative & Other Disorders: Osteoarthritis, Prolapsed Intervertebral Disc (PID)', details: ['Core Knowledge (Theory): Features/management of OA. Features/management of PID.', 'Clinical Skills (Practical/OSCE): Straight leg raising test (SLRT).', 'Integrated Concepts (Viva Voce): Anatomy of spine/disc.']},
+                            { id: 'surg_ortho_paeds', name: 'Pediatric Orthopaedics: Congenital Talipes Equinovarus (CTEV), Developmental Dysplasia of the Hip (DDH)', details: ['Core Knowledge (Theory): Features/management (Ponseti) for CTEV. Screening (Barlow, Ortolani)/management of DDH.', 'Clinical Skills (Practical/OSCE): Barlow/Ortolani maneuvers (model).', 'Integrated Concepts (Viva Voce): Pediatric ortho principles.']}
+                        ]
+                    },
+                    {
+                        id: 'surg_anes',
+                        topic: '3.7 Allied Specialty: Anesthesiology (Principles & Perioperative Care)',
+                        subtopics: [
+                            { id: 'surg_anes_preop', name: 'Preoperative Assessment & Optimization', details: ['Core Knowledge (Theory): Goals of pre-op eval. ASA classification.', 'Clinical Skills (Practical/OSCE): Taking pre-anesthetic history.', 'Integrated Concepts (Viva Voce): Managing comorbidities.']},
+                            { id: 'surg_anes_ga', name: '*General, Spinal, and Epidural Anesthesia (Principles, Drugs, Complications)', details: ['Core Knowledge (Theory): Stages of GA. Anesthetic agents. Principles of spinal/epidural, landmarks, drugs, complications.', 'Clinical Skills (Practical/OSCE): Identifying spinal anesthesia equipment.', 'Integrated Concepts (Viva Voce): Pharmacology.']},
+                            { id: 'surg_anes_airway', name: 'Airway Management (Intubation, Bag-Mask Ventilation)', details: ['Core Knowledge (Theory): Airway assessment. Bag-mask ventilation. Endotracheal intubation. Oropharyngeal/nasopharyngeal airways.', 'Clinical Skills (Practical/OSCE): *Demonstrating bag-mask ventilation and OPA insertion on manikin*.', 'Integrated Concepts (Viva Voce): Critical life-saving skill.']},
+                            { id: 'surg_anes_pain', name: 'Pain Management (Postoperative analgesia)', details: ['Core Knowledge (Theory): Multimodal analgesia principles.', 'Clinical Skills (Practical/OSCE): Assessing pain (pain scale).', 'Integrated Concepts (Viva Voce): Pharmacology of analgesics.']}
+                        ]
+                    },
+                    {
+                        id: 'surg_radio',
+                        topic: '3.8 Allied Specialty: Radiodiagnosis (Imaging Principles)',
+                        subtopics: [
+                            { id: 'surg_radio_xray', name: 'Interpretation of X-rays (Chest, Abdomen, Skeletal)', details: ['Core Knowledge (Theory): Systematic approach. Recognizing pneumoperitoneum, obstruction, fractures.', 'Clinical Skills (Practical/OSCE): *Presenting X-ray systematically*.', 'Integrated Concepts (Viva Voce): X-ray physics.']},
+                            { id: 'surg_radio_usg', name: 'Principles/indications of USG, CT, and MRI', details: ['Core Knowledge (Theory): Choosing appropriate modality (USG for gallstones, CT for trauma, MRI for soft tissue).', 'Clinical Skills (Practical/OSCE): Justifying investigation choice.', 'Integrated Concepts (Viva Voce): Radiation safety.']},
+                            { id: 'surg_radio_fast', name: 'FAST (Focused Assessment with Sonography for Trauma)', details: ['Core Knowledge (Theory): Purpose/views of FAST for free fluid.', 'Clinical Skills (Practical/OSCE): Identifying FAST windows.', 'Integrated Concepts (Viva Voce): Role in ATLS.']}
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'obgyn',
+                subject: 'Section 4: Obstetrics & Gynaecology',
+                topics: [
+                    {
+                        id: 'obgyn_obs',
+                        topic: '4.1 Obstetrics',
+                        subtopics: [
+                            { id: 'obgyn_obs_anc', name: 'Antenatal Care: Maternal changes, diagnosis, visits, prenatal diagnosis.', details: ['Core Knowledge (Theory): Physiological changes. Diagnosis. Antenatal care schedule. Prenatal tests (dual, triple markers; amnio, CVS).', 'Clinical Skills (Practical/OSCE): Obstetric history. Antenatal exam (fundal height, lie, presentation). Calculating EDD. Counseling.', 'Integrated Concepts (Viva Voce): Hormonal changes.']},
+                            { id: 'obgyn_obs_fetal', name: 'Fetal Medicine: Fetal skull & maternal pelvis, fetal circulation, fetal well-being (*NST, BPP*).', details: ['Core Knowledge (Theory): Fetal skull/maternal pelvis diameters. Fetal circulation/changes at birth. Fetal surveillance (*NST*, CST, *BPP*, Doppler).', 'Clinical Skills (Practical/OSCE): Identifying skull/pelvis landmarks. *Interpreting a CTG/NST strip*.', 'Integrated Concepts (Viva Voce): Pelvic anatomy. Fetal physiology.']},
+                            { id: 'obgyn_obs_labor', name: 'Normal Labour: Physiology, stages, mechanism, management.', details: ['Core Knowledge (Theory): Onset of labor. Stages. *Mechanism of labor (OA position)*. Management of 1st, 2nd, 3rd stages. AMTSL.', 'Clinical Skills (Practical/OSCE): Plotting/interpreting partograph. Assessing cervix (model). Conducting delivery (simulator).', 'Integrated Concepts (Viva Voce): The "3 Ps" (Powers, Passage, Passenger).']},
+                            { id: 'obgyn_obs_abnormal', name: 'Abnormal Labour & Malpresentations: Dystocia, Obstructed labour, *Breech*, Face, Brow.', details: ['Core Knowledge (Theory): Dystocia. Obstructed labor. *Breech presentation* (types, diagnosis, management, ECV). Face/brow presentations.', 'Clinical Skills (Practical/OSCE): Leopold\'s maneuvers.', 'Integrated Concepts (Viva Voce): Fetopelvic relationship.']},
+                            { id: 'obgyn_obs_op', name: 'Operative Obstetrics: Forceps, Ventouse, *Caesarean Section*.', details: ['Core Knowledge (Theory): Prerequisites, indications for forceps/ventouse. *Caesarean section* (indications, types, steps). Complications. VBAC.', 'Clinical Skills (Practical/OSCE): Identifying forceps. Counseling for CS.', 'Integrated Concepts (Viva Voce): Anesthesia for CS.']},
+                            { id: 'obgyn_obs_med', name: 'Medical Illness in Pregnancy: *Anemia*, *Hypertensive Disorders (Pre-eclampsia, Eclampsia)*, *GDM*, Heart Disease, Jaundice.', details: ['Core Knowledge (Theory): *Anemia* management. *Hypertensive disorders* classification, pathophysiology, management (*eclampsia management with MgSO4*). *GDM* screening, diagnosis, management. Pregnancy with heart disease/jaundice.', 'Clinical Skills (Practical/OSCE): Measuring BP, testing proteinuria. Managing eclamptic fit (simulated).', 'Integrated Concepts (Viva Voce): Pathophysiology of pre-eclampsia.']},
+                            { id: 'obgyn_obs_emerg', name: 'Obstetric Emergencies: *APH (Placenta Previa, Abruption)*, *PPH*, Ectopic Pregnancy, Molar Pregnancy.', details: ['Core Knowledge (Theory): *Differentiating previa/abruption*. APH management. *PPH* definition, causes (4 Ts), *stepwise management*. Ectopic pregnancy. Molar pregnancy.', 'Clinical Skills (Practical/OSCE): Assessing bleeding patient. Bimanual uterine compression (model).', 'Integrated Concepts (Viva Voce): Hypovolemic shock.']},
+                            { id: 'obgyn_obs_puer', name: 'Puerperium: Normal puerperium, complications (Sepsis, Thrombosis).', details: ['Core Knowledge (Theory): Physiological changes. Normal puerperium management, breastfeeding. Puerperal sepsis, DVT.', 'Clinical Skills (Practical/OSCE): Postnatal exam. Counseling on postpartum contraception.', 'Integrated Concepts (Viva Voce): Lactation physiology.']}
+                        ]
+                    },
+                    {
+                        id: 'obgyn_gyn',
+                        topic: '4.2 Gynaecology',
+                        subtopics: [
+                            { id: 'obgyn_gyn_phys', name: 'Anatomy & Physiology: Menstrual cycle, Puberty, Menopause.', details: ['Core Knowledge (Theory): Anatomy. Menstrual cycle hormones/phases. Puberty, menopause physiology.', 'Clinical Skills (Practical/OSCE): Taking menstrual history.', 'Integrated Concepts (Viva Voce): H-P-O axis.']},
+                            { id: 'obgyn_gyn_mens', name: 'Menstrual Disorders: *Abnormal Uterine Bleeding (AUB)*, Amenorrhea, Dysmenorrhea.', details: ['Core Knowledge (Theory): PALM-COEIN classification of *AUB*. Evaluation of amenorrhea. Management of dysmenorrhea.', 'Clinical Skills (Practical/OSCE): Approach to AUB patient.', 'Integrated Concepts (Viva Voce): Endocrine causes.']},
+                            { id: 'obgyn_gyn_infect', name: 'Infections: Pelvic Inflammatory Disease (PID), Vaginitis.', details: ['Core Knowledge (Theory): Causes, features, management of PID. Differentiating vaginitis causes.', 'Clinical Skills (Practical/OSCE): Per-speculum/bimanual exam (model).', 'Integrated Concepts (Viva Voce): Microbiology of STIs.']},
+                            { id: 'obgyn_gyn_benign', name: 'Benign Neoplasms: *Uterine Fibroids*, Ovarian Cysts, Endometriosis, Adenomyosis.', details: ['Core Knowledge (Theory): *Uterine fibroids* management. Approach to adnexal mass. Endometriosis/adenomyosis features, management.', 'Clinical Skills (Practical/OSCE): Bimanual exam for uterine size/adnexal masses.', 'Integrated Concepts (Viva Voce): Pathology.']},
+                            { id: 'obgyn_gyn_malig', name: 'Malignant Neoplasms: *Carcinoma of the Cervix (screening/HPV)*, Endometrial Carcinoma, Ovarian Cancer.', details: ['Core Knowledge (Theory): HPV role in *cervical cancer*. Screening (Pap, HPV test), prevention (vaccine). Staging/management of cervical cancer. Endometrial/ovarian cancer.', 'Clinical Skills (Practical/OSCE): Pap smear procedure.', 'Integrated Concepts (Viva Voce): Link to PSM (cancer screening).']},
+                            { id: 'obgyn_gyn_uro', name: 'Urogynaecology: Pelvic Organ Prolapse (POP), Urinary Incontinence.', details: ['Core Knowledge (Theory): Pelvic floor anatomy. Staging/management of POP. Differentiating/managing stress, urge, overflow incontinence.', 'Clinical Skills (Practical/OSCE): Eliciting symptoms/signs.', 'Integrated Concepts (Viva Voce): Surgical repair principles.']},
+                            { id: 'obgyn_gyn_endo', name: 'Reproductive Endocrinology: *Polycystic Ovarian Syndrome (PCOS)*, Infertility.', details: ['Core Knowledge (Theory): *PCOS* pathophysiology, diagnosis (Rotterdam), management. Infertility workup.', 'Clinical Skills (Practical/OSCE): Counseling PCOS patient on lifestyle.', 'Integrated Concepts (Viva Voce): Endocrine basis of ovulation.']},
+                            { id: 'obgyn_gyn_fp', name: 'Family Planning & Contraception: Methods (Hormonal, IUCDs), Emergency Contraception, Sterilization.', details: ['Core Knowledge (Theory): Contraceptive methods, mechanisms, efficacy, pros/cons. Emergency contraception. Sterilization.', 'Clinical Skills (Practical/OSCE): Counseling on contraceptive choices. IUCD insertion (model).', 'Integrated Concepts (Viva Voce): Link to PSM (Family Welfare).']}
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'paeds',
+                subject: 'Section 5: Paediatrics',
+                topics: [
+                    {
+                        id: 'paeds_neo',
+                        topic: '5.1 Neonatology',
+                        subtopics: [
+                            { id: 'paeds_neo_norm', name: '*The Normal Newborn & Neonatal Resuscitation (NRP)*', details: ['Core Knowledge (Theory): Normal newborn characteristics. Routine care. *NRP algorithm* (initial steps, PPV, compressions, meds). Apgar score.', 'Clinical Skills (Practical/OSCE): *Demonstrating initial resuscitation steps on manikin*. Assessing gestational age (New Ballard Score).', 'Integrated Concepts (Viva Voce): Fetal-neonatal circulation transition.']},
+                            { id: 'paeds_neo_lbw', name: '*Low Birth Weight (Preterm & IUGR) babies & management*', details: ['Core Knowledge (Theory): Definitions. Problems/management of LBW (thermoregulation - *KMC*, feeding, infection prevention).', 'Clinical Skills (Practical/OSCE): Calculating fluid/nutritional requirements.', 'Integrated Concepts (Viva Voce): Causes of preterm labor/IUGR.']},
+                            { id: 'paeds_neo_jaundice', name: '*Neonatal Jaundice (Physiological vs. Pathological, Phototherapy)*', details: ['Core Knowledge (Theory): Bilirubin metabolism. *Differentiating physiological/pathological jaundice*. Causes. Complications (*kernicterus*). *Phototherapy/exchange transfusion* principles.', 'Clinical Skills (Practical/OSCE): Clinical assessment (Kramer\'s rule).', 'Integrated Concepts (Viva Voce): Hemolytic disease of newborn.']},
+                            { id: 'paeds_neo_rds', name: '*Respiratory Distress Syndrome (RDS)* & Meconium Aspiration Syndrome', details: ['Core Knowledge (Theory): RDS pathophysiology (surfactant). Features, CXR. Management (surfactant, respiratory support). MAS pathophysiology/management.', 'Clinical Skills (Practical/OSCE): Assessing respiratory distress (Silverman-Andersen).', 'Integrated Concepts (Viva Voce): Fetal lung maturity.']},
+                            { id: 'paeds_neo_sepsis', name: '*Neonatal Sepsis*', details: ['Core Knowledge (Theory): Risk factors. Early vs. late onset. Clinical features (subtle). Workup, empirical antibiotics.', 'Clinical Skills (Practical/OSCE): Recognizing subtle signs of sepsis.', 'Integrated Concepts (Viva Voce): Microbiology.']},
+                            { id: 'paeds_neo_hie', name: 'Perinatal Asphyxia & Hypoxic-Ischemic Encephalopathy (HIE)', details: ['Core Knowledge (Theory): Causes, pathophysiology. HIE staging. Management (therapeutic hypothermia).', 'Clinical Skills (Practical/OSCE): Assessing for HIE signs.', 'Integrated Concepts (Viva Voce): Long-term neurological sequelae.']},
+                            { id: 'paeds_neo_hypo', name: 'Neonatal Hypoglycemia & Hypothermia', details: ['Core Knowledge (Theory): Risk factors, features, management.', 'Clinical Skills (Practical/OSCE): Correct temperature measurement.', 'Integrated Concepts (Viva Voce): "Warm chain."']}
+                        ]
+                    },
+                    {
+                        id: 'paeds_growth',
+                        topic: '5.2 Growth, Development & Behavioural Disorders',
+                        subtopics: [
+                            { id: 'paeds_growth_mon', name: '*Growth Monitoring & Short Stature*', details: ['Core Knowledge (Theory): Growth parameters. Use/interpretation of growth charts. Approach to *short stature* (normal variants vs. pathological).', 'Clinical Skills (Practical/OSCE): *Plotting/interpreting growth chart*.', 'Integrated Concepts (Viva Voce): Endocrine control.']},
+                            { id: 'paeds_growth_dev', name: '*Developmental Milestones & Developmental Delay*', details: ['Core Knowledge (Theory): *Key milestones (gross motor, fine motor, language, social)*. Age of attainment, "red flags".', 'Clinical Skills (Practical/OSCE): *Assessing developmental milestones*.', 'Integrated Concepts (Viva Voce): Neurodevelopment.']},
+                            { id: 'paeds_growth_adol', name: 'Adolescent Health', details: ['Core Knowledge (Theory): Tanner staging. Common adolescent health issues.', 'Clinical Skills (Practical/OSCE): History from adolescent (HEEADSSS).', 'Integrated Concepts (Viva Voce): AETCOM communication.']},
+                            { id: 'paeds_growth_behav', name: 'Behavioural Disorders (ADHD, Autism Spectrum Disorder)', details: ['Core Knowledge (Theory): Core features of ADHD, ASD.', 'Clinical Skills (Practical/OSCE): Recognizing behavioral patterns.', 'Integrated Concepts (Viva Voce): Link to Psychiatry.']}
+                        ]
+                    },
+                    {
+                        id: 'paeds_nutri',
+                        topic: '5.3 Nutrition',
+                        subtopics: [
+                            { id: 'paeds_nutri_bf', name: '*Breastfeeding*', details: ['Core Knowledge (Theory): Composition, advantages. Lactation physiology. Positioning/attachment. Common problems.', 'Clinical Skills (Practical/OSCE): *Counseling mother on benefits/techniques*.', 'Integrated Concepts (Viva Voce): Link to PSM (IMNCI).']},
+                            { id: 'paeds_nutri_pem', name: '*Protein-Energy Malnutrition (Kwashiorkor, Marasmus)* & SAM', details: ['Core Knowledge (Theory): Differentiating Kwashiorkor/Marasmus. WHO classification. *Stepwise management of SAM*.', 'Clinical Skills (Practical/OSCE): Anthropometric assessment (MUAC).', 'Integrated Concepts (Viva Voce): Public health aspects.']},
+                            { id: 'paeds_nutri_vit', name: '*Vitamin & Mineral Deficiencies (Vitamin A, D-Rickets, Iron)*', details: ['Core Knowledge (Theory): Features, diagnosis, management of Vit A deficiency, rickets, iron deficiency anemia.', 'Clinical Skills (Practical/OSCE): Examining for rickets signs.', 'Integrated Concepts (Viva Voce): Biochemistry of vitamins.']}
+                        ]
+                    },
+                    {
+                        id: 'paeds_fluid',
+                        topic: '5.4 Fluid, Electrolyte & Acid-Base Balance',
+                        subtopics: [
+                            { id: 'paeds_fluid_dehyd', name: '*Management of Dehydration (ORS, IV fluids)*', details: ['Core Knowledge (Theory): Assessing dehydration degree. *ORS composition/principles*. WHO plans. IV fluid indications/choice.', 'Clinical Skills (Practical/OSCE): *Demonstrating ORS preparation/administration*. Assessing dehydration signs.', 'Integrated Concepts (Viva Voce): Fluid balance physiology.']}
+                        ]
+                    },
+                    {
+                        id: 'paeds_infect',
+                        topic: '5.5 Infectious Diseases & Immunization',
+                        subtopics: [
+                            { id: 'paeds_infect_nis', name: '*National Immunization Schedule*', details: ['Core Knowledge (Theory): *Complete current NIS* (vaccines, doses, routes, schedules). Vaccine types. Cold chain.', 'Clinical Skills (Practical/OSCE): Administering vaccines (model). Counseling parents.', 'Integrated Concepts (Viva Voce): Cornerstone of PSM.']},
+                            { id: 'paeds_infect_exan', name: 'Common Exanthematous Fevers (Measles, Chickenpox)', details: ['Core Knowledge (Theory): Differentiating measles, rubella, varicella (features, rash). Complications.', 'Clinical Skills (Practical/OSCE): Identifying Koplik\'s spots.', 'Integrated Concepts (Viva Voce): Vaccine-preventable diseases.']},
+                            { id: 'paeds_infect_dpt', name: 'Diphtheria, Pertussis, Tetanus', details: ['Core Knowledge (Theory): Features, diagnosis, management of diphtheria, pertussis, neonatal tetanus.', 'Clinical Skills (Practical/OSCE): Recognizing diphtheritic membrane.', 'Integrated Concepts (Viva Voce): Microbiology.']},
+                            { id: 'paeds_infect_tb', name: '*Tuberculosis in Children*', details: ['Core Knowledge (Theory): Differences from adult TB. Diagnosis. Management under NTEP.', 'Clinical Skills (Practical/OSCE): Administering/interpreting Mantoux test.', 'Integrated Concepts (Viva Voce): Link to Medicine/PSM.']},
+                            { id: 'paeds_infect_other', name: 'Enteric Fever, Dengue, Malaria', details: ['Core Knowledge (Theory): Features, diagnosis, management in children.', 'Clinical Skills (Practical/OSCE): Fluid therapy in pediatric dengue.', 'Integrated Concepts (Viva Voce): Vector control.']}
+                        ]
+                    },
+                    {
+                        id: 'paeds_sys',
+                        topic: '5.6 Systemic Paediatrics',
+                        subtopics: [
+                            { id: 'paeds_sys_gi', name: 'Gastroenterology: *Acute Diarrhea*, Celiac Disease, Intussusception', details: ['Core Knowledge (Theory): *Acute diarrhea* etiology, pathophysiology, management (hydration). Celiac features. Intussusception (colicky pain, red currant jelly stool).', 'Clinical Skills (Practical/OSCE): History/assessment of child with diarrhea.', 'Integrated Concepts (Viva Voce): Link to dehydration management.']},
+                            { id: 'paeds_sys_cardio', name: 'Cardiology: *Congenital Heart Disease (Acyanotic/Cyanotic)*, Rheumatic Fever', details: ['Core Knowledge (Theory): Differentiating acyanotic (VSD, ASD, PDA) / cyanotic. *TOF* components, features (cyanotic spells), X-ray. TGA. *Revised Jones criteria* for Rheumatic Fever.', 'Clinical Skills (Practical/OSCE): Examining child with CHD.', 'Integrated Concepts (Viva Voce): Heart embryology.']},
+                            { id: 'paeds_sys_nephro', name: 'Nephrology: *Nephrotic Syndrome*, Acute Post-Streptococcal Glomerulonephritis (APSGN)', details: ['Core Knowledge (Theory): *Idiopathic nephrotic syndrome* management (steroids, relapses). APSGN presentation/management.', 'Clinical Skills (Practical/OSCE): Examining child with generalized edema.', 'Integrated Concepts (Viva Voce): Pathophysiology of proteinuria.']},
+                            { id: 'paeds_sys_neuro', name: 'Neurology: *Febrile Seizures*, *Meningitis & Encephalitis*, Cerebral Palsy', details: ['Core Knowledge (Theory): Differentiating simple/complex *febrile seizures*. *Bacterial meningitis* management. Cerebral palsy classification/management.', 'Clinical Skills (Practical/OSCE): Counseling parents on febrile seizures.', 'Integrated Concepts (Viva Voce): Long-term care.']},
+                            { id: 'paeds_sys_haema', name: 'Hematology: *Iron Deficiency Anemia*, Thalassemia, Hemophilia, *ALL*', details: ['Core Knowledge (Theory): *Iron deficiency anemia*. Beta-thalassemia major. Hemophilia. *ALL* features/management.', 'Clinical Skills (Practical/OSCE): Examining for pallor, hepatosplenomegaly.', 'Integrated Concepts (Viva Voce): Genetics.']},
+                            { id: 'paeds_sys_resp', name: 'Respiratory: *Acute Respiratory Infections (Pneumonia, Bronchiolitis)*, Childhood Asthma', details: ['Core Knowledge (Theory): *Pneumonia*/bronchiolitis management. IMNCI classification of ARI. Childhood asthma.', 'Clinical Skills (Practical/OSCE): Assessing respiratory distress (chest indrawing).', 'Integrated Concepts (Viva Voce): IMNCI strategy.']}
+                        ]
+                    },
+                    {
+                        id: 'paeds_emerg',
+                        topic: '5.7 Paediatric Emergencies',
+                        subtopics: [
+                            { id: 'paeds_emerg_se', name: 'Status Epilepticus', details: ['Core Knowledge (Theory): Definition and stepwise emergency management.']},
+                            { id: 'paeds_emerg_asthma', name: 'Status Asthmaticus', details: ['Core Knowledge (Theory): Recognition and emergency management.']},
+                            { id: 'paeds_emerg_shock', name: 'Shock', details: ['Core Knowledge (Theory): Recognizing and managing shock (septic, hypovolemic) in children.']},
+                            { id: 'paeds_emerg_poison', name: 'Poisoning (Kerosene, Iron)', details: ['Core Knowledge (Theory): Specific management of common pediatric poisonings.']}
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'revision',
+                subject: 'Section 6: Focused Revision Checklist (Part I Subjects)',
+                topics: [
+                    {
+                        id: 'rev_ophtha',
+                        topic: '6.1 Ophthalmology',
+                        subtopics: [
+                            { id: 'rev_ophtha_cataract', name: '*Cataract*', details: ['Core Knowledge: Etiology, features, types, surgical principles.']},
+                            { id: 'rev_ophtha_glaucoma', name: '*Glaucoma*', details: ['Core Knowledge: Differentiating open-angle/angle-closure. Medical/surgical management.']},
+                            { id: 'rev_ophtha_retino', name: '*Diabetic & Hypertensive Retinopathy*', details: ['Core Knowledge: Classification, fundoscopic findings, screening.']},
+                            { id: 'rev_ophtha_ulcer', name: 'Corneal Ulcer', details: ['Core Knowledge: Differentiating bacterial/fungal.']},
+                            { id: 'rev_ophtha_refract', name: 'Refractive Errors', details: ['Core Knowledge: Principles of myopia, hypermetropia, astigmatism.']},
+                            { id: 'rev_ophtha_injury', name: 'Ocular Injuries & Emergencies', details: ['Core Knowledge: Management of chemical/penetrating trauma.']},
+                            { id: 'rev_ophtha_npcb', name: 'National Programme for Control of Blindness', details: ['Core Knowledge: Objectives, strategies (cataract, diabetic retinopathy).']}
+                        ]
+                    },
+                    {
+                        id: 'rev_ent',
+                        topic: '6.2 Otorhinolaryngology (ENT)',
+                        subtopics: [
+                            { id: 'rev_ent_csom', name: '*Chronic Suppurative Otitis Media (CSOM) & complications*', details: ['Core Knowledge: Safe vs. unsafe types. Intracranial complications.']},
+                            { id: 'rev_ent_epistaxis', name: '*Epistaxis*', details: ['Core Knowledge: Little\'s area. Management of anterior/posterior bleeding.']},
+                            { id: 'rev_ent_dns', name: 'Deviated Nasal Septum (DNS) & Sinusitis', details: ['Core Knowledge: Features, management principles.']},
+                            { id: 'rev_ent_tonsil', name: 'Tonsillitis & complications (Quinsy)', details: ['Core Knowledge: Management of acute tonsillitis, peritonsillar abscess.']},
+                            { id: 'rev_ent_ca', name: '*Carcinoma Larynx & Hoarseness of Voice*', details: ['Core Knowledge: Approach to hoarseness.']},
+                            { id: 'rev_ent_airway', name: '*Airway Emergencies & Tracheostomy*', details: ['Core Knowledge: Recognizing stridor. Indications/types of tracheostomy.']}
+                        ]
+                    },
+                    {
+                        id: 'rev_psm',
+                        topic: '6.3 Community Medicine (PSM)',
+                        subtopics: [
+                            { id: 'rev_psm_epi', name: 'Epidemiology', details: ['Core Knowledge: Definitions (incidence, prevalence, endemic, epidemic). Case-control/cohort studies.']},
+                            { id: 'rev_psm_bio', name: 'Biostatistics', details: ['Core Knowledge: Null hypothesis, p-value, Chi-square, t-test.']},
+                            { id: 'rev_psm_nhp', name: '*National Health Programmes*', details: ['Core Knowledge: Objectives/strategies (NTEP, NVBDCP, NACP, RMNCH+A, NP-NCDCS).']},
+                            { id: 'rev_psm_vax', name: '*Vaccines & Cold Chain*', details: ['Core Knowledge: National Immunization Schedule. Cold chain principles.']},
+                            { id: 'rev_psm_prev', name: 'Concepts of Health & Disease Prevention', details: ['Core Knowledge: Levels of prevention.']},
+                            { id: 'rev_psm_env', name: 'Environmental Health', details: ['Core Knowledge: Water purification. Biomedical waste management.']}
+                        ]
+                    }
+                ]
+            }
+        ];
+        // --- END SYLLABUS DATA ---
+
+        // Firebase App State
+        let db, auth, userId, userDocRef;
+        let progressListener = null;
+
+        // App State
+        let allSubtopics = [];
+        let completedTopics = new Set();
+        let currentDailyTopic = null;
+        let studyStreak = 0;
+        let lastLoginDate = null;
+        let currentFlashcards = [];
+        let currentFlashcardIndex = 0;
+        let currentQuiz = null;
+
+        // DOM Elements
+        const globalLoader = document.getElementById('global-loader');
+        const appContent = document.getElementById('app-content');
+        const userIdElement = document.getElementById('user-id');
+        const progressRing = document.getElementById('progress-ring');
+        const progressPercent = document.getElementById('progress-percent');
+        const progressText = document.getElementById('progress-text');
+        const dailyTopicContainer = document.getElementById('daily-topic-container');
+        const allCompleteMessage = document.getElementById('all-complete-message');
+        const toggleSyllabusBtn = document.getElementById('toggle-syllabus-btn');
+        
+        const syllabusModal = document.getElementById('syllabus-modal');
+        const closeSyllabusModalBtn = document.getElementById('close-syllabus-modal-btn');
+        const fullSyllabusContainer = document.getElementById('full-syllabus-container');
+        
+        const featureModal = document.getElementById('feature-modal');
+        const featureModalTitle = document.getElementById('feature-modal-title');
+        const featureModalContent = document.getElementById('feature-modal-content');
+        const featureModalFooter = document.getElementById('feature-modal-footer');
+        const closeFeatureModalBtn = document.getElementById('close-feature-modal-btn');
+        const featureLoader = document.getElementById('feature-loader');
+
+        const studyStreakEl = document.getElementById('study-streak');
+        const streakCountEl = document.getElementById('streak-count');
+
+        // --- GEMINI API Schemas ---
+        const flashcardSchema = {
+            type: "ARRAY",
+            items: {
+                type: "OBJECT",
+                properties: {
+                    "front": { "type": "STRING" },
+                    "back": { "type": "STRING" }
+                },
+                required: ["front", "back"]
+            }
+        };
+
+        const quizSchema = {
+            type: "OBJECT",
+            properties: {
+                "questions": {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            "question": { "type": "STRING" },
+                            "options": {
+                                type: "ARRAY",
+                                items: { "type": "STRING" }
+                            },
+                            "correctAnswerIndex": { "type": "INTEGER" }
+                        },
+                        required: ["question", "options", "correctAnswerIndex"]
+                    }
+                }
+            },
+            required: ["questions"]
+        };
+
+
+        // --- CORE FUNCTIONS ---
+
+        /**
+         * Initializes Firebase and sets up authentication.
+         */
+        async function initFirebase() {
+            try {
+                setLogLevel('Debug');
+                
+                // STEP 1: YOUR FIREBASE CONFIG
+                const firebaseConfig = {
+                  apiKey: "AIzaSyC0eI2n3SOYwN8G-_SiNkSvSyJt9jj37ik",
+                  authDomain: "mbbs-study-tracker.firebaseapp.com",
+                  projectId: "mbbs-study-tracker",
+                  storageBucket: "mbbs-study-tracker.firebasestorage.app",
+                  messagingSenderId: "502058245849",
+                  appId: "1:502058245849:web:409c6d0adc70171f1668c8",
+                  measurementId: "G-LMHDEHD7B7"
+                };
+
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userIdElement.textContent = userId;
+                        
+                        // *** THIS IS THE FIX ***
+                        // The path is collection('mbbs-progress').doc(userId)
+                        // This has an even number of segments (2)
+                        userDocRef = doc(db, 'mbbs-progress', userId);
+                        
+                        await loadProgress();
+                    } else {
+                        // User is signed out.
+                        userId = null;
+                        userIdElement.textContent = 'Not signed in';
+                        if(progressListener) progressListener(); // Detach old listener
+                    }
+                    
+                    // Show app content after auth state is resolved
+                    globalLoader.style.display = 'none';
+                    appContent.style.opacity = 1;
+                });
+
+                // STEP 3: Always sign in anonymously for the public app
+                await signInAnonymously(auth);
+
+            } catch (error)
+{
+                console.error("Firebase Init Error:", error);
+                globalLoader.textContent = 'Error loading app. Please refresh.';
+            }
+        }
+
+        /**
+         * Flattens the hierarchical syllabus into a single array of subtopics.
+         */
+        function flattenSyllabus() {
+            allSubtopics = [];
+            syllabus.forEach(subject => {
+                subject.topics.forEach(topic => {
+                    topic.subtopics.forEach(subtopic => {
+                        allSubtopics.push({
+                            ...subtopic,
+                            subjectName: subject.subject,
+                            topicName: topic.topic
+                        });
+                    });
+                });
+            });
+            updateProgressUI(); // Initialize UI with 0 / total
+        }
+
+        /**
+         * Loads user's progress from Firestore and sets up a real-time listener.
+         */
+        async function loadProgress() {
+            if (!userDocRef) return;
+
+            // Detach any existing listener before attaching a new one
+            if (progressListener) {
+                progressListener();
+            }
+
+            progressListener = onSnapshot(userDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    completedTopics = new Set(data.completedTopics || []);
+                    studyStreak = data.studyStreak || 0;
+                    lastLoginDate = data.lastLoginDate || null;
+                    
+                    updateStreak();
+
+                } else {
+                    console.log("No progress document found, creating one.");
+                    completedTopics = new Set();
+                    studyStreak = 0;
+                    lastLoginDate = null;
+                    saveProgress(); // Create the doc
+                }
+                
+                // Update all UI components that depend on progress
+                updateProgressUI();
+                renderFullSyllabus();
+                updateStreakUI();
+                
+                // If a daily topic isn't being viewed, or if the one being viewed just got completed, get a new one.
+                if (!currentDailyTopic || completedTopics.has(currentDailyTopic.id)) {
+                    displayDailyTopic();
+                }
+            }, (error) => {
+                console.error("Error loading progress:", error);
+            });
+        }
+
+        /**
+         * Saves the current 'completedTopics' Set to Firestore.
+         */
+        async function saveProgress(markedComplete = false) {
+            if (!userDocRef) return;
+            
+            let streakData = {};
+            if (markedComplete) {
+                const today = new Date().toDateString();
+                if (lastLoginDate !== today) {
+                    streakData = {
+                        studyStreak: studyStreak + 1,
+                        lastLoginDate: today
+                    }
+                }
+            }
+            
+            try {
+                // Convert Set to Array for Firestore
+                await setDoc(userDocRef, { 
+                    completedTopics: Array.from(completedTopics),
+                    ...streakData
+                }, { merge: true });
+            } catch (error) {
+                console.error("Error saving progress:", error);
+            }
+        }
+        
+        /**
+         * Checks and updates the study streak.
+         */
+        function updateStreak() {
+            const today = new Date();
+            const todayStr = today.toDateString();
+
+            if (lastLoginDate === todayStr) {
+                // Already logged in today, do nothing
+                return;
+            }
+
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+            const yesterdayStr = yesterday.toDateString();
+
+            if (lastLoginDate === yesterdayStr) {
+                // Consecutive day, streak is maintained by saveProgress
+                // but we don't increment it here, only when an item is *completed*
+            } else if (lastLoginDate !== null) {
+                // Missed a day
+                studyStreak = 0; // Reset streak
+                updateDoc(userDocRef, { studyStreak: 0 });
+            }
+            // If lastLoginDate is null, it's their first day. Streak will be 1 on first completion.
+        }
+        
+        /**
+         * Updates the streak UI.
+         */
+        function updateStreakUI() {
+             if (studyStreak > 0) {
+                streakCountEl.textContent = `${studyStreak} Day Streak`;
+                studyStreakEl.classList.remove('hidden');
+            } else {
+                studyStreakEl.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Updates the progress bar and text.
+         */
+        function updateProgressUI() {
+            const total = allSubtopics.length;
+            if (total === 0) return; // Avoid divide by zero
+
+            const completedCount = completedTopics.size;
+            const percentage = Math.round((completedCount / total) * 100);
+
+            progressText.textContent = `${completedCount} / ${total} Topics Completed`;
+            progressPercent.textContent = `${percentage}%`;
+
+            const radius = 45;
+            const circumference = 2 * Math.PI * radius;
+            const offset = circumference - (percentage / 100) * circumference;
+            progressRing.style.strokeDashoffset = offset;
+        }
+
+        /**
+         * Selects and displays a random, incomplete daily topic.
+         */
+        function displayDailyTopic() {
+            const incompleteTopics = allSubtopics.filter(topic => !completedTopics.has(topic.id));
+
+            if (incompleteTopics.length === 0) {
+                dailyTopicContainer.innerHTML = '';
+                dailyTopicContainer.style.display = 'none';
+                allCompleteMessage.style.display = 'block';
+                currentDailyTopic = null;
+                return;
+            }
+
+            allCompleteMessage.style.display = 'none';
+            dailyTopicContainer.style.display = 'block';
+
+            currentDailyTopic = incompleteTopics[Math.floor(Math.random() * incompleteTopics.length)];
+            
+            dailyTopicContainer.innerHTML = `
+                <div class="border-b pb-4 mb-4">
+                    <p class="text-sm font-medium text-indigo-600">${currentDailyTopic.subjectName} &gt; ${currentDailyTopic.topicName}</p>
+                    <h3 class="text-2xl font-semibold mt-1">${currentDailyTopic.name}</h3>
+                </div>
+                <p class="text-gray-600 mb-4">Review the following points for your "quiz" (self-assessment):</p>
+                <ul class="list-disc list-inside space-y-3">
+                    ${currentDailyTopic.details.map(detail => `<li class="text-gray-800">${detail}</li>`).join('')}
+                </ul>
+                <div class="flex flex-col sm:flex-row gap-3 mt-6 border-t pt-6">
+                    <button id="generate-flashcards-btn" class="flex-1 bg-blue-600 text-white px-5 py-3 rounded-lg font-medium shadow hover:bg-blue-700 transition-all">
+                        Generate Flashcards
+                    </button>
+                    <button id="generate-quiz-btn" class="flex-1 bg-purple-600 text-white px-5 py-3 rounded-lg font-medium shadow hover:bg-purple-700 transition-all">
+                        Generate Quiz
+                    </button>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3 mt-3">
+                    <button id="mark-complete-btn" class="flex-1 bg-green-600 text-white px-5 py-3 rounded-lg font-medium shadow hover:bg-green-700 transition-all">
+                        Mark as Completed & Get New Topic
+                    </button>
+                    <button id="get-new-topic-btn" class="flex-1 bg-gray-200 text-gray-800 px-5 py-3 rounded-lg font-medium hover:bg-gray-300 transition-all">
+                        Skip / Get Another Topic
+                    </button>
+                </div>
+            `;
+
+            // Add event listeners for the new buttons
+            document.getElementById('mark-complete-btn').onclick = () => {
+                if (currentDailyTopic) {
+                    completedTopics.add(currentDailyTopic.id);
+                    // This function handles streak logic
+                    saveProgress(true); 
+                    // The onSnapshot listener will automatically call displayDailyTopic()
+                }
+            };
+            document.getElementById('get-new-topic-btn').onclick = displayDailyTopic;
+            
+            document.getElementById('generate-flashcards-btn').onclick = () => handleFlashcardClick(currentDailyTopic);
+            document.getElementById('generate-quiz-btn').onclick = () => handleQuizClick(currentDailyTopic);
+        }
+
+        /**
+         * Renders the entire syllabus checklist in the modal.
+         */
+        function renderFullSyllabus() {
+            fullSyllabusContainer.innerHTML = ''; // Clear previous content
+
+            syllabus.forEach(subject => {
+                const subjectDiv = document.createElement('div');
+                subjectDiv.className = 'mb-6';
+                subjectDiv.innerHTML = `<h3 class="text-xl font-bold text-indigo-700 border-b border-indigo-200 pb-2 mb-3">${subject.subject}</h3>`;
+
+                subject.topics.forEach(topic => {
+                    const topicDiv = document.createElement('div');
+                    topicDiv.className = 'ml-4 mb-4';
+                    topicDiv.innerHTML = `<h4 class="text-lg font-semibold text-gray-800">${topic.topic}</h4>`;
+
+                    const subtopicList = document.createElement('ul');
+                    subtopicList.className = 'mt-2 space-y-2 ml-4';
+
+                    topic.subtopics.forEach(subtopic => {
+                        const li = document.createElement('li');
+                        li.className = 'flex items-center';
+                        
+                        const isChecked = completedTopics.has(subtopic.id);
+
+                        li.innerHTML = `
+                            <label class="flex items-start cursor-pointer">
+                                <input type="checkbox" class="custom-checkbox" data-id="${subtopic.id}" ${isChecked ? 'checked' : ''}>
+                                <span class="text-gray-700 ${isChecked ? 'line-through text-gray-400' : ''}">${subtopic.name}</span>
+                            </label>
+                        `;
+                        subtopicList.appendChild(li);
+                    });
+
+                    topicDiv.appendChild(subtopicList);
+                    subjectDiv.appendChild(topicDiv);
+                });
+
+                fullSyllabusContainer.appendChild(subjectDiv);
+            });
+
+            // Add event listeners to all new checkboxes
+            fullSyllabusContainer.querySelectorAll('.custom-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const id = e.target.dataset.id;
+                    const label = e.target.nextElementSibling;
+                    if (e.target.checked) {
+                        completedTopics.add(id);
+                        label.classList.add('line-through', 'text-gray-400');
+                        saveProgress(true); // Mark as complete, check streak
+                    } else {
+                        completedTopics.delete(id);
+                        label.classList.remove('line-through', 'text-gray-400');
+                        saveProgress(false); // Just save, don't update streak
+                    }
+                });
+            });
+        }
+
+        // --- MODAL EVENT LISTENERS ---
+        toggleSyllabusBtn.onclick = () => syllabusModal.classList.add('show');
+        closeSyllabusModalBtn.onclick = () => syllabusModal.classList.remove('show');
+        
+        closeFeatureModalBtn.onclick = () => featureModal.classList.remove('show');
+        
+        window.onclick = (event) => {
+            if (event.target == syllabusModal) {
+                syllabusModal.classList.remove('show');
+            }
+            if (event.target == featureModal) {
+                featureModal.classList.remove('show');
+            }
+        };
+
+        // --- GEMINI API FUNCTIONS ---
+
+        /**
+         * Calls the Gemini API with structured output.
+         * @param {string} prompt - The user prompt.
+         * @param {object} schema - The JSON schema for the expected response.
+         * @param {number} retries - Number of retries left.
+         * @param {number} delay - Delay in ms for backoff.
+         * @returns {Promise<object>} - The parsed JSON object from the API.
+         */
+        async function callGeminiAPI(prompt, schema, retries = 3, delay = 1000) {
+            const systemPrompt = "You are a helpful medical education assistant. Your role is to generate study materials (flashcards or quizzes) based on the provided syllabus content for a final year MBBS student. Be accurate, concise, and adhere strictly to the requested JSON format.";
+            const apiKey = ""; // Leave as-is, will be populated by the environment.
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: schema,
+                    temperature: 0.5,
+                }
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    
+                    const jsonText = result.candidates[0].content.parts[0].text;
+                    return JSON.parse(jsonText);
+                } else {
+                    throw new Error("Invalid API response structure.");
+                }
+            } catch (error) {
+                console.error("Gemini API call failed:", error.message);
+                if (retries > 0) {
+                    console.log(`Retrying in ${delay}ms... (${retries} retries left)`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return callGeminiAPI(prompt, schema, retries - 1, delay * 2);
+                } else {
+                    return null; // Return null after all retries fail
+                }
+            }
+        }
+
+        /**
+         * Handles the "Generate Flashcards" button click.
+         */
+        async function handleFlashcardClick(topic) {
+            featureModalTitle.textContent = `Flashcards for ${topic.name}`;
+            featureModalContent.innerHTML = ''; // Clear previous
+            featureLoader.style.display = 'block';
+            featureModalFooter.innerHTML = '';
+            featureModal.classList.add('show');
+            
+            const prompt = `Generate exactly 5 concise flashcards (front and back) for a 4th-year MBBS student based on the following topic details. Focus on high-yield facts, definitions, and clinical signs.
+            
+            Topic: ${topic.name}
+            Details: ${topic.details.join(' ')}`;
+
+            const data = await callGeminiAPI(prompt, flashcardSchema);
+            
+            featureLoader.style.display = 'none';
+            if (data && data.length > 0) {
+                currentFlashcards = data;
+                currentFlashcardIndex = 0;
+                renderFlashcardUI();
+            } else {
+                featureModalContent.innerHTML = `<p class="text-red-500">Sorry, I couldn't generate flashcards for this topic. Please try again.</p>`;
+            }
+        }
+
+        /**
+         * Renders the flashcard UI inside the feature modal.
+         */
+        function renderFlashcardUI() {
+            featureModalContent.innerHTML = `
+                <div class="flashcard-container">
+                    <div class="flashcard" id="flashcard">
+                        <div class="flashcard-face flashcard-front text-xl font-semibold"></div>
+                        <div class="flashcard-face flashcard-back text-lg"></div>
+                    </div>
+                </div>
+            `;
+            
+            featureModalFooter.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <button id="prev-card-btn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium">&larr; Prev</button>
+                    <span id="card-counter" class="text-gray-600">1 / ${currentFlashcards.length}</span>
+                    <button id="flip-card-btn" class="bg-indigo-600 text-white px-5 py-2 rounded-lg font-medium">Flip Card</button>
+                    <button id="next-card-btn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium">Next &rarr;</button>
+                </div>
+            `;
+
+            updateFlashcardContent();
+            
+            document.getElementById('flip-card-btn').onclick = () => {
+                document.getElementById('flashcard').classList.toggle('is-flipped');
+            };
+            document.getElementById('prev-card-btn').onclick = () => {
+                if (currentFlashcardIndex > 0) {
+                    currentFlashcardIndex--;
+                    updateFlashcardContent();
+                }
+            };
+            document.getElementById('next-card-btn').onclick = () => {
+                if (currentFlashcardIndex < currentFlashcards.length - 1) {
+                    currentFlashcardIndex++;
+                    updateFlashcardContent();
+                }
+            };
+        }
+        
+        /**
+         * Updates the text content of the current flashcard.
+         */
+        function updateFlashcardContent() {
+            const card = currentFlashcards[currentFlashcardIndex];
+            document.querySelector('.flashcard-front').textContent = card.front;
+            document.querySelector('.flashcard-back').textContent = card.back;
+            document.getElementById('card-counter').textContent = `${currentFlashcardIndex + 1} / ${currentFlashcards.length}`;
+            document.getElementById('flashcard').classList.remove('is-flipped');
+            
+            // Disable/Enable buttons
+            document.getElementById('prev-card-btn').disabled = currentFlashcardIndex === 0;
+            document.getElementById('next-card-btn').disabled = currentFlashcardIndex === currentFlashcards.length - 1;
+        }
+
+        /**
+         * Handles the "Generate Quiz" button click.
+         */
+        async function handleQuizClick(topic) {
+            featureModalTitle.textContent = `Quiz for ${topic.name}`;
+            featureModalContent.innerHTML = ''; // Clear previous
+            featureLoader.style.display = 'block';
+            featureModalFooter.innerHTML = '';
+            featureModal.classList.add('show');
+
+            const prompt = `Generate exactly 3 multiple-choice quiz questions for a 4th-year MBBS student based on the following topic details. Each question must have 4 options and one correct answer.
+            
+            Topic: ${topic.name}
+            Details: ${topic.details.join(' ')}`;
+
+            const data = await callGeminiAPI(prompt, quizSchema);
+            
+            featureLoader.style.display = 'none';
+            if (data && data.questions && data.questions.length > 0) {
+                currentQuiz = data;
+                renderQuizUI();
+            } else {
+                featureModalContent.innerHTML = `<p class="text-red-500">Sorry, I couldn't generate a quiz for this topic. Please try again.</p>`;
+            }
+        }
+        
+        /**
+         * Renders the quiz UI inside the feature modal.
+         */
+        function renderQuizUI() {
+            let quizHTML = '<div class="space-y-6">';
+            
+            currentQuiz.questions.forEach((q, qIndex) => {
+                quizHTML += `
+                    <div class="quiz-question" data-q-index="${qIndex}">
+                        <p class="text-lg font-semibold mb-3">${qIndex + 1}. ${q.question}</p>
+                        <div class="quiz-options space-y-2">
+                            ${q.options.map((opt, oIndex) => `
+                                <label class="quiz-option">
+                                    <input type="radio" name="q${qIndex}" value="${oIndex}" class="sr-only">
+                                    <span>${String.fromCharCode(65 + oIndex)}. ${opt}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            quizHTML += '</div>';
+            featureModalContent.innerHTML = quizHTML;
+            
+            featureModalFooter.innerHTML = `
+                <button id="check-quiz-btn" class="w-full bg-green-600 text-white px-5 py-3 rounded-lg font-medium shadow hover:bg-green-700 transition-all">
+                    Check Answers
+                </button>
+            `;
+            
+            // Add listeners for option selection
+            featureModalContent.querySelectorAll('.quiz-option').forEach(opt => {
+                opt.onclick = () => {
+                    // Remove 'selected' from siblings
+                    opt.closest('.quiz-options').querySelectorAll('.quiz-option').forEach(sib => sib.classList.remove('selected'));
+                    // Add 'selected' to clicked
+                    opt.classList.add('selected');
+                }
+            });
+            
+            document.getElementById('check-quiz-btn').onclick = checkQuizAnswers;
+        }
+
+        /**
+         * Checks the user's quiz answers and provides feedback.
+         */
+        function checkQuizAnswers() {
+            let correctCount = 0;
+            const totalQuestions = currentQuiz.questions.length;
+            
+            featureModalContent.querySelectorAll('.quiz-question').forEach((qEl, qIndex) => {
+                const question = currentQuiz.questions[qIndex];
+                const selectedInput = qEl.querySelector(`input[name="q${qIndex}"]:checked`);
+                
+                // Disable all inputs for this question
+                qEl.querySelectorAll('input').forEach(inp => inp.disabled = true);
+                
+                const options = qEl.querySelectorAll('.quiz-option');
+                
+                if (selectedInput) {
+                    const selectedIndex = parseInt(selectedInput.value, 10);
+                    const selectedOptionEl = selectedInput.closest('.quiz-option');
+                    
+                    if (selectedIndex === question.correctAnswerIndex) {
+                        correctCount++;
+                        selectedOptionEl.classList.remove('selected');
+                        selectedOptionEl.classList.add('correct');
+                    } else {
+                        selectedOptionEl.classList.remove('selected');
+                        selectedOptionEl.classList.add('incorrect');
+                        // Also show the correct one
+                        options[question.correctAnswerIndex].classList.add('correct');
+                    }
+                } else {
+                    // No answer selected, just show the correct one
+                    options[question.correctAnswerIndex].classList.add('correct');
+                }
+            });
+            
+            // Update footer with score
+            const scorePercent = Math.round((correctCount / totalQuestions) * 100);
+            featureModalFooter.innerHTML = `
+                <div class="text-center">
+                    <p class="text-xl font-bold">You scored ${correctCount} / ${totalQuestions} (${scorePercent}%)</p>
+                    <button id="quiz-done-btn" class="mt-3 bg-indigo-600 text-white px-5 py-2 rounded-lg font-medium">
+                        Done
+                    </button>
+                </div>
+            `;
+            document.getElementById('quiz-done-btn').onclick = () => {
+                featureModal.classList.remove('show');
+            };
+        }
+
+        // --- APP INITIALIZATION ---
+        window.onload = () => {
+            flattenSyllabus();
+            initFirebase();
+        };
+
+    </script>
+</body>
+</html>
